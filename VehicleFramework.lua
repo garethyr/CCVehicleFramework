@@ -1,6 +1,5 @@
-package.path = package.path .. ";edv.rte/?.lua";
-package.loaded["ArmoredCar/SpringFramework"] = nil; --TODO killme
-require("ArmoredCar/SpringFramework")
+package.loaded["SpringFramework/SpringFramework"] = nil; --TODO killme
+require("SpringFramework/SpringFramework");
 
 VehicleFramework = {};
 
@@ -10,21 +9,27 @@ VehicleFramework.SUSPENSION_VISUALS_TYPE = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3
 function VehicleFramework.createTank(self, tankConfig)
 	local tank = tankConfig;
 	
+	--------------------
+	--GENERAL SETTINGS--
+	--------------------
 	tank.general.team = self.Team;
 	tank.general.pos = self.Pos;
 	tank.general.vel = self.Vel;
 	tank.general.controller = self:GetController();
 	tank.general.throttle = 0;
-	tank.general.isInAirHigh = false;
-	tank.general.isInAirLow = false;
+	tank.general.isInAir = false;
 	tank.general.isDriving = false;
 	tank.general.isStronglyDecelerating = false;
 	
+	-----------------------
+	--Suspension SETTINGS--
+	-----------------------
 	tank.suspension.springs = {};
 	tank.suspension.objects = {};
 	tank.suspension.offsets = {main = {}, midPoint = {}};
 	tank.suspension.length = {};
-	tank.suspension.longest = nil;
+	tank.suspension.longest = {max = 0};
+	
 	for i = 1, tank.wheel.count do
 		if (tank.suspension.defaultLength) then
 			tank.suspension.length[i] = {min = tank.suspension.defaultLength.min, normal = tank.suspension.defaultLength.normal, max = tank.suspension.defaultLength.max};
@@ -34,32 +39,52 @@ function VehicleFramework.createTank(self, tankConfig)
 		end
 		tank.suspension.length[i].difference = tank.suspension.length[i].max - tank.suspension.length[i].min;
 		tank.suspension.length[i].mid = tank.suspension.length[i].min + tank.suspension.length[i].difference * 0.5;
-		tank.suspension.longest = (tank.suspension.longest == nil or tank.suspension.longest.max < tank.suspension.length[i].max) and tank.suspension.length[i] or tank.suspension.longest;
+		tank.suspension.length[i].normal = tank.suspension.length[i].normal or tank.suspension.length[i].mid; --Default to mid if we have no normal
+		tank.suspension.longest = tank.suspension.length[i].max > tank.suspension.longest.max and tank.suspension.length[i] or tank.suspension.longest;
 	end
 	tank.suspension.defaultLength = nil; tank.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
-	tank.suspension.maxForceBeforeMass = 80;
 	
+	------------------
+	--WHEEL SETTINGS--
+	------------------
 	tank.wheel.objects = {};
-	tank.wheel.rotatedOffsets = {};
-	tank.wheel.unrotatedOffsets = {};
-	for i = 1, tank.wheel.count do
-		tank.wheel.rotatedOffsets[i] = {};
-		tank.wheel.unrotatedOffsets[i] = {};
-	end
 	tank.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel objects' diameter
 	tank.wheel.evenWheelCount = tank.wheel.count % 2 == 0;
 	tank.wheel.midWheel = tank.wheel.evenWheelCount and tank.wheel.count * 0.5 or math.ceil(tank.wheel.count * 0.5);
-	tank.wheel.primary = self.HFlipped and tank.wheel.count or 1;
 	
+	-----------------------
+	--TENSIONER SETTINGS--
+	-----------------------
+	if (tank.tensioner ~= nil) then
+		tank.tensioner.objects = {};
+	end
+	
+	------------------
+	--TRACK SETTINGS--
+	------------------
+	if (tank.track ~= nil) then
+		tank.track.corners.objects = {};
+		tank.track.bottom.objects = {};
+		tank.track.top.objects = {};
+	end
+	
+	------------------------
+	--DESTRUCTION SETTINGS--
+	------------------------
 	tank.destruction.overturnedTimer = Timer();
-	tank.destruction.overturnedInterval = 600;
+	tank.destruction.overturnedInterval = 1000;
 	tank.destruction.overturnedCounter = 0;
 	
-	VehicleFramework.updateCalculatedPositions(self, tank);
-	VehicleFramework.createWheels(self, tank);
+	-----------------------------
+	--OBJECT CREATION AND SETUP--
+	-----------------------------
 	if (tank.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
 		VehicleFramework.createSuspensionSprites(tank);
 	end
+	
+	VehicleFramework.createWheels(self, tank);
+	
+	VehicleFramework.createSprings(self, tank);
 	
 	return tank;
 end

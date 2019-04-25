@@ -6,132 +6,132 @@ VehicleFramework = {};
 --Enums and Constants
 VehicleFramework.SUSPENSION_VISUALS_TYPE = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
 
-function VehicleFramework.createTank(self, tankConfig)
-	local tank = tankConfig;
+function VehicleFramework.createVehicle(self, vehicleConfig)
+	local vehicle = vehicleConfig;
 	
 	--------------------
 	--GENERAL SETTINGS--
 	--------------------
-	tank.general.team = self.Team;
-	tank.general.pos = self.Pos;
-	tank.general.vel = self.Vel;
-	tank.general.controller = self:GetController();
-	tank.general.throttle = 0;
-	tank.general.isInAir = false;
-	tank.general.isDriving = false;
-	tank.general.isStronglyDecelerating = false;
+	vehicle.general.team = self.Team;
+	vehicle.general.pos = self.Pos;
+	vehicle.general.vel = self.Vel;
+	vehicle.general.controller = self:GetController();
+	vehicle.general.throttle = 0;
+	vehicle.general.isInAir = false;
+	vehicle.general.isDriving = false;
+	vehicle.general.isStronglyDecelerating = false;
 	
 	-----------------------
 	--Suspension SETTINGS--
 	-----------------------
-	tank.suspension.springs = {};
-	tank.suspension.objects = {};
-	tank.suspension.offsets = {main = {}, midPoint = {}};
-	tank.suspension.length = {};
-	tank.suspension.longest = {max = 0};
+	vehicle.suspension.springs = {};
+	vehicle.suspension.objects = {};
+	vehicle.suspension.offsets = {main = {}, midPoint = {}};
+	vehicle.suspension.length = {};
+	vehicle.suspension.longest = {max = 0};
 	
-	for i = 1, tank.wheel.count do
-		if (tank.suspension.defaultLength) then
-			tank.suspension.length[i] = {min = tank.suspension.defaultLength.min, normal = tank.suspension.defaultLength.normal, max = tank.suspension.defaultLength.max};
+	for i = 1, vehicle.wheel.count do
+		if (vehicle.suspension.defaultLength) then
+			vehicle.suspension.length[i] = {min = vehicle.suspension.defaultLength.min, normal = vehicle.suspension.defaultLength.normal, max = vehicle.suspension.defaultLength.max};
 		end
-		if (tank.suspension.lengthOverride ~= nil and tank.suspension.lengthOverride[i] ~= nil) then
-			tank.suspension.length[i] = {min = tank.suspension.lengthOverride[i].min, normal = tank.suspension.lengthOverride[i].normal, max = tank.suspension.lengthOverride[i].max};
+		if (vehicle.suspension.lengthOverride ~= nil and vehicle.suspension.lengthOverride[i] ~= nil) then
+			vehicle.suspension.length[i] = {min = vehicle.suspension.lengthOverride[i].min, normal = vehicle.suspension.lengthOverride[i].normal, max = vehicle.suspension.lengthOverride[i].max};
 		end
-		tank.suspension.length[i].difference = tank.suspension.length[i].max - tank.suspension.length[i].min;
-		tank.suspension.length[i].mid = tank.suspension.length[i].min + tank.suspension.length[i].difference * 0.5;
-		tank.suspension.length[i].normal = tank.suspension.length[i].normal or tank.suspension.length[i].mid; --Default to mid if we have no normal
-		tank.suspension.longest = tank.suspension.length[i].max > tank.suspension.longest.max and tank.suspension.length[i] or tank.suspension.longest;
+		vehicle.suspension.length[i].difference = vehicle.suspension.length[i].max - vehicle.suspension.length[i].min;
+		vehicle.suspension.length[i].mid = vehicle.suspension.length[i].min + vehicle.suspension.length[i].difference * 0.5;
+		vehicle.suspension.length[i].normal = vehicle.suspension.length[i].normal or vehicle.suspension.length[i].mid; --Default to mid if we have no normal
+		vehicle.suspension.longest = vehicle.suspension.length[i].max > vehicle.suspension.longest.max and vehicle.suspension.length[i] or vehicle.suspension.longest;
 	end
-	tank.suspension.defaultLength = nil; tank.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
+	vehicle.suspension.defaultLength = nil; vehicle.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
 	
 	------------------
 	--WHEEL SETTINGS--
 	------------------
-	tank.wheel.objects = {};
-	tank.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel objects' diameter
-	tank.wheel.evenWheelCount = tank.wheel.count % 2 == 0;
-	tank.wheel.midWheel = tank.wheel.evenWheelCount and tank.wheel.count * 0.5 or math.ceil(tank.wheel.count * 0.5);
+	vehicle.wheel.objects = {};
+	vehicle.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel objects' diameter
+	vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
+	vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
 	
 	-----------------------
 	--TENSIONER SETTINGS--
 	-----------------------
-	if (tank.tensioner ~= nil) then
-		tank.tensioner.objects = {};
+	if (vehicle.tensioner ~= nil) then
+		vehicle.tensioner.objects = {};
 	end
 	
 	------------------
 	--TRACK SETTINGS--
 	------------------
-	if (tank.track ~= nil) then
-		tank.track.corners.objects = {};
-		tank.track.bottom.objects = {};
-		tank.track.top.objects = {};
+	if (vehicle.track ~= nil) then
+		vehicle.track.corners.objects = {};
+		vehicle.track.bottom.objects = {};
+		vehicle.track.top.objects = {};
 	end
 	
 	------------------------
 	--DESTRUCTION SETTINGS--
 	------------------------
-	tank.destruction.overturnedTimer = Timer();
-	tank.destruction.overturnedInterval = 1000;
-	tank.destruction.overturnedCounter = 0;
+	vehicle.destruction.overturnedTimer = Timer();
+	vehicle.destruction.overturnedInterval = 1000;
+	vehicle.destruction.overturnedCounter = 0;
 	
 	-----------------------------
 	--OBJECT CREATION AND SETUP--
 	-----------------------------
-	if (tank.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
-		VehicleFramework.createSuspensionSprites(tank);
+	if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
+		VehicleFramework.createSuspensionSprites(vehicle);
 	end
 	
-	VehicleFramework.createWheels(self, tank);
+	VehicleFramework.createWheels(self, vehicle);
 	
-	VehicleFramework.createSprings(self, tank);
+	VehicleFramework.createSprings(self, vehicle);
 	
-	return tank;
+	return vehicle;
 end
 
-function VehicleFramework.createSuspensionSprites(tank)
-	for i = 1, tank.suspension.count do
-		if not MovableMan:ValidMO(tank.suspension.objects[i]) then
-			tank.suspension.objects[i] = CreateMOSRotating(tank.wheel.objectName, tank.wheel.objectRTE);
-			tank.suspension.objects[i].Pos = tank.general.pos;
-			tank.suspension.objects[i].Team = tank.general.team;
-			MovableMan:AddParticle(tank.suspension.objects[i]);
+function VehicleFramework.createSuspensionSprites(vehicle)
+	for i = 1, vehicle.suspension.count do
+		if not MovableMan:ValidMO(vehicle.suspension.objects[i]) then
+			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
+			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
+			vehicle.suspension.objects[i].Team = vehicle.general.team;
+			MovableMan:AddParticle(vehicle.suspension.objects[i]);
 		end
 	end
 end
 
-function VehicleFramework.createWheels(self, tank)
-	local calculateWheelInitialPosition = function(rotAngle, tank, wheelNumber)
+function VehicleFramework.createWheels(self, vehicle)
+	local calculateWheelInitialPosition = function(rotAngle, vehicle, wheelNumber)
 		local xOffset;
-		if (wheelNumber == tank.wheel.midWheel) then
-			xOffset = tank.wheel.evenWheelCount and tank.wheel.spacing * 0.5 or 0;
+		if (wheelNumber == vehicle.wheel.midWheel) then
+			xOffset = vehicle.wheel.evenWheelCount and vehicle.wheel.spacing * 0.5 or 0;
 		else
-			xOffset = tank.wheel.spacing * (tank.wheel.midWheel - wheelNumber) + (tank.wheel.evenWheelCount and tank.wheel.spacing * 0.5 or 0);
+			xOffset = vehicle.wheel.spacing * (vehicle.wheel.midWheel - wheelNumber) + (vehicle.wheel.evenWheelCount and vehicle.wheel.spacing * 0.5 or 0);
 		end
 		
-		return tank.general.pos + Vector(xOffset, tank.suspension.length[wheelNumber].normal):RadRotate(rotAngle);
+		return vehicle.general.pos + Vector(xOffset, vehicle.suspension.length[wheelNumber].normal):RadRotate(rotAngle);
 	end
 
-	for i = 1, tank.wheel.count do
-		if not MovableMan:ValidMO(tank.wheel.objects[i]) then
-			tank.wheel.objects[i] = CreateMOSRotating(tank.wheel.objectName, tank.wheel.objectRTE);
-			tank.wheel.objects[i].Team = tank.general.team;
-			tank.wheel.objects[i].Pos = calculateWheelInitialPosition(self.RotAngle, tank, i);
-			tank.wheel.objects[i].Vel = Vector(0, 0);
-			MovableMan:AddParticle(tank.wheel.objects[i]);
+	for i = 1, vehicle.wheel.count do
+		if not MovableMan:ValidMO(vehicle.wheel.objects[i]) then
+			vehicle.wheel.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
+			vehicle.wheel.objects[i].Team = vehicle.general.team;
+			vehicle.wheel.objects[i].Pos = calculateWheelInitialPosition(self.RotAngle, vehicle, i);
+			vehicle.wheel.objects[i].Vel = Vector(0, 0);
+			MovableMan:AddParticle(vehicle.wheel.objects[i]);
 		end
 	end
-	tank.wheel.size = tank.wheel.objects[1].Diameter/math.sqrt(2);
+	vehicle.wheel.size = vehicle.wheel.objects[1].Diameter/math.sqrt(2);
 end
 
-function VehicleFramework.createSprings(self, tank)
-	for i, wheelObject in ipairs(tank.wheel.objects) do			
+function VehicleFramework.createSprings(self, vehicle)
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do			
 		local springConfig = {
-			length = {tank.suspension.length[i].min, tank.suspension.length[i].normal, tank.suspension.length[i].max},
+			length = {vehicle.suspension.length[i].min, vehicle.suspension.length[i].normal, vehicle.suspension.length[i].max},
 			primaryTarget = 1,
-			stiffness = tank.suspension.stiffness,
-			stiffnessMultiplier = {self.Mass/tank.wheel.count, tank.wheel.objects[i].Mass},
-			offsets = Vector(tank.wheel.objects[i].Pos.X - tank.general.pos.X, 0),
+			stiffness = vehicle.suspension.stiffness,
+			stiffnessMultiplier = {self.Mass/vehicle.wheel.count, vehicle.wheel.objects[i].Mass},
+			offsets = Vector(vehicle.wheel.objects[i].Pos.X - vehicle.general.pos.X, 0),
 			applyForcesAtOffset = false,
 			lockToSpringRotation = true,
 			inheritsRotAngle = 1,
@@ -140,66 +140,66 @@ function VehicleFramework.createSprings(self, tank)
 			confinesToCheck = {min = false, absolute = true, max = true},
 			showDebug = false
 		}
-		tank.suspension.springs[i] = SpringFramework.create(self, tank.wheel.objects[i], springConfig);
+		vehicle.suspension.springs[i] = SpringFramework.create(self, vehicle.wheel.objects[i], springConfig);
 	end
 end
 
-function VehicleFramework.updateTank(self, tank)
-	local destroyed = VehicleFramework.updateDestruction(self, tank);
+function VehicleFramework.updateVehicle(self, vehicle)
+	local destroyed = VehicleFramework.updateDestruction(self, vehicle);
 	if (not destroyed) then
 		--Need to be fairly precise about this or it might cause a false positive
-		tank.general.isInAir = self:GetAltitude(0, 10) > 2 * (tank.wheel.size + tank.suspension.longest.max);
+		vehicle.general.isInAir = self:GetAltitude(0, 10) > 2 * (vehicle.wheel.size + vehicle.suspension.longest.max);
 		
-		VehicleFramework.updateThrottle(tank);
+		VehicleFramework.updateThrottle(vehicle);
 		
-		VehicleFramework.updateSprings(self.tank);
+		VehicleFramework.updateSprings(self.vehicle);
 		
-		VehicleFramework.updateWheels(self.tank);
+		VehicleFramework.updateWheels(self.vehicle);
 		
-		if (not tank.general.isInAir) then
-			VehicleFramework.updateChassis(self, self.tank);
+		if (not vehicle.general.isInAir) then
+			VehicleFramework.updateChassis(self, self.vehicle);
 		end
 		
-		if (tank.suspension.visualsType ~= VehicleFramework.SUSPENSION_VISUALS_TYPE.INVISIBLE) then
-			VehicleFramework.updateSuspension(self, tank);
+		if (vehicle.suspension.visualsType ~= VehicleFramework.SUSPENSION_VISUALS_TYPE.INVISIBLE) then
+			VehicleFramework.updateSuspension(self, vehicle);
 		end
 	end
 end
 
-function VehicleFramework.updateDestruction(self, tank)
+function VehicleFramework.updateDestruction(self, vehicle)
 	if (self.Health < 0) then
 		self:GibThis();
 		return true;
 	end
 	
-	if (tank.destruction.overturnedTimer:IsPastSimMS(tank.destruction.overturnedInterval)) then
-		for _, wheelObject in ipairs(tank.wheel.objects) do
-			if (wheelObject.Pos.Y < tank.general.pos.Y) then
-				tank.destruction.overturnedCounter = tank.destruction.overturnedCounter + 1;
+	if (vehicle.destruction.overturnedTimer:IsPastSimMS(vehicle.destruction.overturnedInterval)) then
+		for _, wheelObject in ipairs(vehicle.wheel.objects) do
+			if (wheelObject.Pos.Y < vehicle.general.pos.Y) then
+				vehicle.destruction.overturnedCounter = vehicle.destruction.overturnedCounter + 1;
 			end
 		end
 		
-		if (tank.destruction.overturnedCounter > tank.destruction.overturnedLimit) then
+		if (vehicle.destruction.overturnedCounter > vehicle.destruction.overturnedLimit) then
 			self:GibThis();
 			return true;
 		else
-			tank.destruction.overturnedCounter = math.max(tank.destruction.overturnedCounter - 1, 0);
+			vehicle.destruction.overturnedCounter = math.max(vehicle.destruction.overturnedCounter - 1, 0);
 		end
-		tank.destruction.overturnedTimer:Reset();
+		vehicle.destruction.overturnedTimer:Reset();
 	end
 	
 	return false;
 end
 
-function VehicleFramework.onDestroy(tank)
-	if (tank ~= nil) then
-		for _, wheelObject in ipairs(tank.wheel.objects) do
+function VehicleFramework.onDestroy(vehicle)
+	if (vehicle ~= nil) then
+		for _, wheelObject in ipairs(vehicle.wheel.objects) do
 			if MovableMan:ValidMO(wheelObject) then
 				wheelObject.ToDelete = true;
 			end
 		end
-		if (tank.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
-			for _, suspensionObject in ipairs(tank.suspension.objects) do
+		if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
+			for _, suspensionObject in ipairs(vehicle.suspension.objects) do
 				if MovableMan:ValidMO(suspensionObject) then
 					suspensionObject.ToDelete = true;
 				end
@@ -208,48 +208,48 @@ function VehicleFramework.onDestroy(tank)
 	end
 end
 
-function VehicleFramework.updateThrottle(tank)
-	tank.general.isDriving = true;
-	if tank.general.controller:IsState(Controller.MOVE_LEFT) and tank.general.throttle < tank.general.maxThrottle then
-		tank.general.throttle = tank.general.throttle + tank.general.acceleration;
-	elseif tank.general.controller:IsState(Controller.MOVE_RIGHT) and tank.general.throttle > -tank.general.maxThrottle then
-		tank.general.throttle = tank.general.throttle - tank.general.acceleration;
+function VehicleFramework.updateThrottle(vehicle)
+	vehicle.general.isDriving = true;
+	if vehicle.general.controller:IsState(Controller.MOVE_LEFT) and vehicle.general.throttle < vehicle.general.maxThrottle then
+		vehicle.general.throttle = vehicle.general.throttle + vehicle.general.acceleration;
+	elseif vehicle.general.controller:IsState(Controller.MOVE_RIGHT) and vehicle.general.throttle > -vehicle.general.maxThrottle then
+		vehicle.general.throttle = vehicle.general.throttle - vehicle.general.acceleration;
 	else
-		tank.general.isDriving = false;
-		if (math.abs(tank.general.throttle) < tank.general.acceleration * 20) then
-			tank.general.isStronglyDecelerating = true;
-			tank.general.throttle = tank.general.throttle * (1 - tank.general.deceleration * 2);
+		vehicle.general.isDriving = false;
+		if (math.abs(vehicle.general.throttle) < vehicle.general.acceleration * 20) then
+			vehicle.general.isStronglyDecelerating = true;
+			vehicle.general.throttle = vehicle.general.throttle * (1 - vehicle.general.deceleration * 2);
 		else
-			tank.general.isStronglyDecelerating = false;
-			tank.general.throttle = tank.general.throttle * (1 - tank.general.deceleration);
+			vehicle.general.isStronglyDecelerating = false;
+			vehicle.general.throttle = vehicle.general.throttle * (1 - vehicle.general.deceleration);
 		end
-		if (math.abs(tank.general.throttle) < tank.general.acceleration * 2) then
-			tank.general.throttle = 0;
+		if (math.abs(vehicle.general.throttle) < vehicle.general.acceleration * 2) then
+			vehicle.general.throttle = 0;
 		end
 	end
 end
 
-function VehicleFramework.updateSprings(tank)
+function VehicleFramework.updateSprings(vehicle)
 	local wheelObject;
-	for i, spring in ipairs(tank.suspension.springs) do
-		wheelObject = tank.wheel.objects[i];
+	for i, spring in ipairs(vehicle.suspension.springs) do
+		wheelObject = vehicle.wheel.objects[i];
 		
 		if (spring ~= nil) then
-			tank.suspension.springs[i] = SpringFramework.update(spring, tank.general.isInAir); --Don't update objects if in air, calculations need to be update because they're used elsewhere
-			spring = tank.suspension.springs[i];
+			vehicle.suspension.springs[i] = SpringFramework.update(spring, vehicle.general.isInAir); --Don't update objects if in air, calculations need to be update because they're used elsewhere
+			spring = vehicle.suspension.springs[i];
 		end
 		if (spring ~= nil and spring.actionsPerformed ~= nil) then
 			if (not spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then
 				wheelObject:MoveOutOfTerrain(6); --TODO Consider doing this all the time
 				
-				if tank.general.vel.Magnitude < 5 and math.abs(tank.general.throttle) > tank.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > tank.general.maxThrottle * 0.5 then
+				if vehicle.general.vel.Magnitude < 5 and math.abs(vehicle.general.throttle) > vehicle.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > vehicle.general.maxThrottle * 0.5 then
 					--Check terrain strength at the wheel's position and its 4 center edges
 					local erasableTerrain = {
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y)).Strength <= tank.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X - tank.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= tank.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X + tank.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= tank.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y - tank.wheel.size * 0.5)).Strength <= tank.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + tank.wheel.size * 0.5)).Strength <= tank.general.maxErasableTerrainStrength and true or nil
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X - vehicle.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X + vehicle.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y - vehicle.wheel.size * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + vehicle.wheel.size * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil
 					};
 					if (#erasableTerrain > 3) then
 						wheelObject:EraseFromTerrain();
@@ -260,9 +260,9 @@ function VehicleFramework.updateSprings(tank)
 	end
 end
 
-function VehicleFramework.updateWheels(tank)
-	for i, wheelObject in ipairs(tank.wheel.objects) do
-		wheelObject.AngularVel = tank.general.throttle;
+function VehicleFramework.updateWheels(vehicle)
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do
+		wheelObject.AngularVel = vehicle.general.throttle;
 		
 		--At some point rot angle can go too high, reset it if it's past 360 for safety
 		if (wheelObject.RotAngle > math.pi*2) then
@@ -271,67 +271,67 @@ function VehicleFramework.updateWheels(tank)
 			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
 		end
 		
-		if (tank.general.isInAir) then
-			wheelObject.Pos = tank.suspension.springs[i].pos[2].rest - Vector();
+		if (vehicle.general.isInAir) then
+			wheelObject.Pos = vehicle.suspension.springs[i].pos[2].rest - Vector();
 			wheelObject.Vel.Y = wheelObject.Vel.Y - SceneMan.GlobalAcc.Magnitude*TimerMan.DeltaTimeSecs;
 		end
 	end
 end
 
-function VehicleFramework.updateChassis(self, tank)
+function VehicleFramework.updateChassis(self, vehicle)
 	self:MoveOutOfTerrain(6);
 	self.AngularVel = self.AngularVel * 0.5;
 	
-	local desiredRotAngle = SceneMan:ShortestDistance(tank.wheel.objects[tank.wheel.count].Pos, tank.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
-	if (self.RotAngle < desiredRotAngle - tank.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle + tank.general.deceleration;
-	elseif (self.RotAngle > desiredRotAngle + tank.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle - tank.general.deceleration;
+	local desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.wheel.count].Pos, vehicle.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+	if (self.RotAngle < desiredRotAngle - vehicle.general.deceleration * 2) then
+		self.RotAngle = self.RotAngle + vehicle.general.deceleration;
+	elseif (self.RotAngle > desiredRotAngle + vehicle.general.deceleration * 2) then
+		self.RotAngle = self.RotAngle - vehicle.general.deceleration;
 	end
 	
-	if (tank.general.vel.Magnitude > tank.general.maxSpeed) then
-		self.Vel = Vector(tank.general.vel.X, tank.general.vel.Y):SetMagnitude(tank.general.maxSpeed);
-	elseif (not tank.general.isDriving) then
-		if (tank.general.isStronglyDecelerating) then
-			self.Vel = self.Vel * (1 - tank.general.deceleration * 10);
+	if (vehicle.general.vel.Magnitude > vehicle.general.maxSpeed) then
+		self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
+	elseif (not vehicle.general.isDriving) then
+		if (vehicle.general.isStronglyDecelerating) then
+			self.Vel = self.Vel * (1 - vehicle.general.deceleration * 10);
 		else
-			self.Vel = self.Vel * (1 - tank.general.deceleration);
+			self.Vel = self.Vel * (1 - vehicle.general.deceleration);
 		end
 	
-		if (self.Vel.Magnitude < tank.general.acceleration) then
+		if (self.Vel.Magnitude < vehicle.general.acceleration) then
 			self.Vel = Vector(0, 0);
 		end
 	end
 end
 
-function VehicleFramework.updateSuspension(self, tank)
-	for i, spring in ipairs(tank.suspension.springs) do
-		tank.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, tank.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
-		if (i ~= tank.wheel.count) then
-			tank.suspension.offsets.midPoint[i] = tank.suspension.offsets.main[i] - Vector(tank.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
+function VehicleFramework.updateSuspension(self, vehicle)
+	for i, spring in ipairs(vehicle.suspension.springs) do
+		vehicle.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, vehicle.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
+		if (i ~= vehicle.wheel.count) then
+			vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] - Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
 		end
 	end
 
-	if (tank.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.DRAWN) then
-		VehicleFramework.updateDrawnSuspension(self, tank);
-	elseif (tank.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
-		VehicleFramework.updateSpriteSuspension(self, tank);
+	if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.DRAWN) then
+		VehicleFramework.updateDrawnSuspension(self, vehicle);
+	elseif (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
+		VehicleFramework.updateSpriteSuspension(self, vehicle);
 	end
 end
 
-function VehicleFramework.updateDrawnSuspension(self, tank)
-	for i, wheelObject in ipairs(tank.wheel.objects) do
-		VehicleFramework.drawArrow(tank.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
+function VehicleFramework.updateDrawnSuspension(self, vehicle)
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do
+		VehicleFramework.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
 		if (i ~= 1) then
-			VehicleFramework.drawArrow(tank.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
+			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
 		end
-		if (i ~= tank.wheel.count) then
-			VehicleFramework.drawArrow(tank.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
+		if (i ~= vehicle.wheel.count) then
+			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
 		end
 	end
 end
 
-function VehicleFramework.updateSpriteSuspension(self, tank)
+function VehicleFramework.updateSpriteSuspension(self, vehicle)
 end
 
 --[[

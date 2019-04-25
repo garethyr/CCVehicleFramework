@@ -229,36 +229,19 @@ function VehicleFramework.updateThrottle(tank)
 	end
 end
 
-
-function VehicleFramework.updatePositionsVelocitiesAndRotations(self, tank)
+function VehicleFramework.updateSprings(tank)
 	local wheelObject;
 	for i, spring in ipairs(tank.suspension.springs) do
 		wheelObject = tank.wheel.objects[i];
 		
-		wheelObject.AngularVel = tank.general.throttle;
-		--At some point rot angle can go too high, reset it if it's past 360 for safety
-		if (wheelObject.RotAngle > math.pi*2) then
-			wheelObject.RotAngle = wheelObject.RotAngle - math.pi*2;
-		elseif (wheelObject.RotAngle < -math.pi*2) then
-			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
-		end
-		
 		if (spring ~= nil) then
-			tank.suspension.springs[i] = SpringFramework.update(spring);
+			tank.suspension.springs[i] = SpringFramework.update(spring, tank.general.isInAir); --Don't update objects if in air, calculations need to be update because they're used elsewhere
 			spring = tank.suspension.springs[i];
 		end
-		if (spring ~= nil) then
-			if (spring.actionsPerformed[SpringFramework.SpringActions.OUTSIDE_OF_CONFINES]) then
-			else
-			end
-			
-			if (spring.actionsPerformed[SpringFramework.SpringActions.MOVE_INTO_ALIGNMENT]) then
-			else
-			end
-			
-			if (spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then
-			else
-				wheelObject:MoveOutOfTerrain(6) --Sand
+		if (spring ~= nil and spring.actionsPerformed ~= nil) then
+			if (not spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then
+				wheelObject:MoveOutOfTerrain(6); --TODO Consider doing this all the time
+				
 				if tank.general.vel.Magnitude < 5 and math.abs(tank.general.throttle) > tank.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > tank.general.maxThrottle * 0.5 then
 					--Check terrain strength at the wheel's position and its 4 center edges
 					local erasableTerrain = {
@@ -269,59 +252,63 @@ function VehicleFramework.updatePositionsVelocitiesAndRotations(self, tank)
 						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + tank.wheel.size * 0.5)).Strength <= tank.general.maxErasableTerrainStrength and true or nil
 					};
 					if (#erasableTerrain > 3) then
-						wheelObject:EraseFromTerrain() --Dislodge wheel if necessary
+						wheelObject:EraseFromTerrain();
 					end
 				end
 			end
 		end
 	end
-	
-	--Update chassis
-	self:MoveOutOfTerrain(6) --Sand
-	self.AngularVel = self.AngularVel * 0.5;
-	
-	local desired = SceneMan:ShortestDistance(tank.wheel.objects[tank.wheel.count].Pos, tank.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
-	if (self.RotAngle < desired - tank.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle + tank.general.deceleration;
-	elseif (self.RotAngle > desired + tank.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle - tank.general.deceleration;
-	end
-	
-	if (not tank.general.isInAirLow) then
-		if (tank.general.vel.Magnitude > tank.general.maxSpeed) then
-			self.Vel = Vector(tank.general.vel.X, tank.general.vel.Y):SetMagnitude(tank.general.maxSpeed);
-		elseif (not tank.general.isDriving) then
-			if (tank.general.isStronglyDecelerating) then
-				self.Vel = self.Vel * (1 - tank.general.deceleration * 10);
-			else
-				self.Vel = self.Vel * (1 - tank.general.deceleration);
-			end
-		
-			if (self.Vel.Magnitude < tank.general.acceleration) then
-				self.Vel = Vector(0, 0);
-			end
-		end
-	end
 end
 
+function VehicleFramework.updateWheels(tank)
 	for i, wheelObject in ipairs(tank.wheel.objects) do
 		wheelObject.AngularVel = tank.general.throttle;
 		
+		--At some point rot angle can go too high, reset it if it's past 360 for safety
+		if (wheelObject.RotAngle > math.pi*2) then
+			wheelObject.RotAngle = wheelObject.RotAngle - math.pi*2;
+		elseif (wheelObject.RotAngle < -math.pi*2) then
+			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
 		end
 		
+		if (tank.general.isInAir) then
+			wheelObject.Pos = tank.suspension.springs[i].pos[2].rest - Vector();
+			wheelObject.Vel.Y = wheelObject.Vel.Y - SceneMan.GlobalAcc.Magnitude*TimerMan.DeltaTimeSecs;
 		end
 	end
 end
 
+function VehicleFramework.updateChassis(self, tank)
+	self:MoveOutOfTerrain(6);
+	self.AngularVel = self.AngularVel * 0.5;
 	
+	local desiredRotAngle = SceneMan:ShortestDistance(tank.wheel.objects[tank.wheel.count].Pos, tank.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+	if (self.RotAngle < desiredRotAngle - tank.general.deceleration * 2) then
+		self.RotAngle = self.RotAngle + tank.general.deceleration;
+	elseif (self.RotAngle > desiredRotAngle + tank.general.deceleration * 2) then
+		self.RotAngle = self.RotAngle - tank.general.deceleration;
 	end
 	
+	if (tank.general.vel.Magnitude > tank.general.maxSpeed) then
+		self.Vel = Vector(tank.general.vel.X, tank.general.vel.Y):SetMagnitude(tank.general.maxSpeed);
+	elseif (not tank.general.isDriving) then
+		if (tank.general.isStronglyDecelerating) then
+			self.Vel = self.Vel * (1 - tank.general.deceleration * 10);
+		else
+			self.Vel = self.Vel * (1 - tank.general.deceleration);
 		end
 	
+		if (self.Vel.Magnitude < tank.general.acceleration) then
+			self.Vel = Vector(0, 0);
 		end
 	end
 end
 
+function VehicleFramework.updateSuspension(self, tank)
+	for i, spring in ipairs(tank.suspension.springs) do
+		tank.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, tank.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
+		if (i ~= tank.wheel.count) then
+			tank.suspension.offsets.midPoint[i] = tank.suspension.offsets.main[i] - Vector(tank.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
 		end
 	end
 
@@ -334,39 +321,18 @@ end
 
 function VehicleFramework.updateDrawnSuspension(self, tank)
 	for i, wheelObject in ipairs(tank.wheel.objects) do
-		VehicleFramework.drawLines(tank.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank);
+		VehicleFramework.drawArrow(tank.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
 		if (i ~= 1) then
-			VehicleFramework.drawLines(tank.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank);
+			VehicleFramework.drawArrow(tank.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
 		end
 		if (i ~= tank.wheel.count) then
-			VehicleFramework.drawLines(tank.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, tank);
-		end
-	end
-end
-
-function VehicleFramework.drawLines(startPos, endPos, rotAngle, tank, colourIndex)
-	local lineAngle = (SceneMan:ShortestDistance(startPos, endPos, SceneMan.SceneWrapsX).AbsDegAngle + (360))%(360);
-	local isHorizontal = (lineAngle >= 315 or lineAngle <= 45) or (lineAngle >= 135 and lineAngle <= 225);
-	local isVertical = (lineAngle >= 45 and lineAngle <= 135) or (lineAngle >= 225 and lineAngle <= 315);
-	local evenLineCount = tank.suspension.visualsConfig.width % 2 == 0;
-	local midCount = math.ceil(tank.suspension.visualsConfig.width * 0.5);
-	local rotatedStartPos = Vector(startPos.X, startPos.Y):RadRotate(-rotAngle);
-	colourIndex = colourIndex or tank.suspension.visualsConfig.colourIndex;
-
-	for i = 1, tank.suspension.visualsConfig.width + (evenLineCount and 1 or 0) do
-		if (i == midCount) then
-			if (evenLineCount == false) then
-				FrameMan:DrawLinePrimitive(startPos, endPos, colourIndex);
-			end
-		else
-			FrameMan:DrawLinePrimitive(Vector(rotatedStartPos.X - (isVertical and (midCount - i) or 0), rotatedStartPos.Y - (isHorizontal and (midCount - i) or 0)):RadRotate(rotAngle), endPos, colourIndex);
+			VehicleFramework.drawArrow(tank.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, tank.suspension.visualsConfig.width, tank.suspension.visualsConfig.colourIndex);
 		end
 	end
 end
 
 function VehicleFramework.updateSpriteSuspension(self, tank)
 end
-
 
 --[[
 	self.CenterPos = self.Pos + self:RotateOffset(Vector(0, -5))
@@ -395,7 +361,7 @@ end
 	
 	self.Suspension[5].Pos = (self.Wheels[3].Pos + self.CenterPos)/2
 	self.Suspension[5].RotAngle = (self.Wheels[3].Pos - self.CenterPos).AbsRadAngle + 1.57
-	--]
+	--]]
 	
 
 	-- Update suspension
@@ -423,3 +389,24 @@ end
 	self.Suspension[7].Pos = (self.Wheels[2].Pos + LeftPos)/2
 	self.Suspension[7].RotAngle = (self.Wheels[2].Pos - LeftPos).AbsRadAngle + 1.57
 	--]]
+
+function VehicleFramework.drawArrow(startPos, endPos, rotAngle, width, colourIndex)
+	local distance = SceneMan:ShortestDistance(startPos, endPos, SceneMan.SceneWrapsX);
+	endPos = startPos + distance;
+	local lineAngle = (distance.AbsDegAngle + 360)%360;
+	local isHorizontal = (lineAngle >= 315 or lineAngle <= 45) or (lineAngle >= 135 and lineAngle <= 225);
+	local isVertical = (lineAngle >= 45 and lineAngle <= 135) or (lineAngle >= 225 and lineAngle <= 315);
+	local evenLineCount = width % 2 == 0;
+	local midCount = math.ceil(width * 0.5);
+	local rotatedStartPos = Vector(startPos.X, startPos.Y):RadRotate(-rotAngle);
+
+	for i = 1, width + (evenLineCount and 1 or 0) do
+		if (i == midCount) then
+			if (evenLineCount == false) then
+				FrameMan:DrawLinePrimitive(startPos, endPos, colourIndex);
+			end
+		else
+			FrameMan:DrawLinePrimitive(Vector(rotatedStartPos.X - (isVertical and (midCount - i) or 0), rotatedStartPos.Y - (isHorizontal and (midCount - i) or 0)):RadRotate(rotAngle), endPos, colourIndex);
+		end
+	end
+end

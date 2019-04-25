@@ -89,38 +89,6 @@ function VehicleFramework.createTank(self, tankConfig)
 	return tank;
 end
 
-function VehicleFramework.createWheels(self, tank)
-	for i = 1, tank.wheel.count do
-		if not MovableMan:ValidMO(tank.wheel.objects[i]) then
-			tank.wheel.objects[i] = CreateMOSRotating(tank.wheel.objectName, tank.wheel.objectRTE);
-			tank.wheel.objects[i].Pos = tank.wheel.rotatedOffsets[i].mid;
-			tank.wheel.objects[i].Team = tank.general.team;
-			tank.wheel.objects[i].Vel = Vector(0, 0);
-			MovableMan:AddParticle(tank.wheel.objects[i]);
-			
-			local springConfig = {
-				length = {tank.suspension.length[i].min, tank.suspension.length[i].normal, tank.suspension.length[i].max},
-				primaryTarget = 1,
-				stiffness = tank.suspension.stiffness,
-				stiffnessMultiplier = {self.Mass/tank.wheel.count, tank.wheel.objects[i].Mass},
-				offsets = Vector(tank.wheel.objects[i].Pos.X - self.Pos.X, 0),
-				applyForcesAtOffset = false,
-				lockToSpringRotation = true,
-				inheritsRotAngle = 1,
-				rotAngleOffset = -math.pi*0.5,
-				outsideOfConfinesAction = {SpringFramework.OutsideOfConfinesOptions.DO_NOTHING, SpringFramework.OutsideOfConfinesOptions.MOVE_TO_REST_POSITION},
-				confinesToCheck = {min = false, absolute = true, max = true},
-				
-				--minimumValuesForActions = {[SpringFramework.SpringActions.MOVE_INTO_ALIGNMENT] = 2, [SpringFramework.SpringActions.APPLY_FORCES] = 0},
-				
-				showDebug = false--i == 3 and true or false
-			}
-			tank.suspension.springs[i] = SpringFramework.create(self, tank.wheel.objects[i], springConfig);
-		end
-	end
-	tank.wheel.size = tank.wheel.objects[1].Diameter / math.sqrt(2);
-end
-
 function VehicleFramework.createSuspensionSprites(tank)
 	for i = 1, tank.suspension.count do
 		if not MovableMan:ValidMO(tank.suspension.objects[i]) then
@@ -129,6 +97,50 @@ function VehicleFramework.createSuspensionSprites(tank)
 			tank.suspension.objects[i].Team = tank.general.team;
 			MovableMan:AddParticle(tank.suspension.objects[i]);
 		end
+	end
+end
+
+function VehicleFramework.createWheels(self, tank)
+	local calculateWheelInitialPosition = function(rotAngle, tank, wheelNumber)
+		local xOffset;
+		if (wheelNumber == tank.wheel.midWheel) then
+			xOffset = tank.wheel.evenWheelCount and tank.wheel.spacing * 0.5 or 0;
+		else
+			xOffset = tank.wheel.spacing * (tank.wheel.midWheel - wheelNumber) + (tank.wheel.evenWheelCount and tank.wheel.spacing * 0.5 or 0);
+		end
+		
+		return tank.general.pos + Vector(xOffset, tank.suspension.length[wheelNumber].normal):RadRotate(rotAngle);
+	end
+
+	for i = 1, tank.wheel.count do
+		if not MovableMan:ValidMO(tank.wheel.objects[i]) then
+			tank.wheel.objects[i] = CreateMOSRotating(tank.wheel.objectName, tank.wheel.objectRTE);
+			tank.wheel.objects[i].Team = tank.general.team;
+			tank.wheel.objects[i].Pos = calculateWheelInitialPosition(self.RotAngle, tank, i);
+			tank.wheel.objects[i].Vel = Vector(0, 0);
+			MovableMan:AddParticle(tank.wheel.objects[i]);
+		end
+	end
+	tank.wheel.size = tank.wheel.objects[1].Diameter/math.sqrt(2);
+end
+
+function VehicleFramework.createSprings(self, tank)
+	for i, wheelObject in ipairs(tank.wheel.objects) do			
+		local springConfig = {
+			length = {tank.suspension.length[i].min, tank.suspension.length[i].normal, tank.suspension.length[i].max},
+			primaryTarget = 1,
+			stiffness = tank.suspension.stiffness,
+			stiffnessMultiplier = {self.Mass/tank.wheel.count, tank.wheel.objects[i].Mass},
+			offsets = Vector(tank.wheel.objects[i].Pos.X - tank.general.pos.X, 0),
+			applyForcesAtOffset = false,
+			lockToSpringRotation = true,
+			inheritsRotAngle = 1,
+			rotAngleOffset = -math.pi*0.5,
+			outsideOfConfinesAction = {SpringFramework.OutsideOfConfinesOptions.DO_NOTHING, SpringFramework.OutsideOfConfinesOptions.MOVE_TO_REST_POSITION},
+			confinesToCheck = {min = false, absolute = true, max = true},
+			showDebug = false
+		}
+		tank.suspension.springs[i] = SpringFramework.create(self, tank.wheel.objects[i], springConfig);
 	end
 end
 

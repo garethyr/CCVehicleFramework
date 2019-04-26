@@ -4,7 +4,7 @@ require("SpringFramework/SpringFramework");
 VehicleFramework = {};
 
 --Enums and Constants
-VehicleFramework.SUSPENSION_VISUALS_TYPE = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
+VehicleFramework.SuspensionVisualsType = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
 
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
@@ -48,7 +48,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	--WHEEL SETTINGS--
 	------------------
 	vehicle.wheel.objects = {};
-	vehicle.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel objects' diameter
+	vehicle.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel object's diameter
 	vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
 	vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
 	
@@ -57,6 +57,11 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	-----------------------
 	if (vehicle.tensioner ~= nil) then
 		vehicle.tensioner.objects = {};
+		vehicle.tensioner.unrotatedOffsets = {};
+		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
+		vehicle.tensioner.size = 0; --This gets filled in by the createWheels function cause it uses the tensioner object's diameter
+		vehicle.tensioner.evenTensionerCount = vehicle.tensioner.count % 2 == 0;
+		vehicle.tensioner.midTensioner = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.count * 0.5 or math.ceil(vehicle.tensioner.count * 0.5);
 	end
 	
 	------------------
@@ -78,13 +83,21 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	-----------------------------
 	--OBJECT CREATION AND SETUP--
 	-----------------------------
-	if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 		VehicleFramework.createSuspensionSprites(vehicle);
 	end
 	
 	VehicleFramework.createWheels(self, vehicle);
 	
 	VehicleFramework.createSprings(self, vehicle);
+	
+	if (vehicle.tensioner ~= nil) then
+		VehicleFramework.createTensioners(self, vehicle);
+	end
+	
+	if (vehicle.track ~= nil) then
+		--VehicleFramework.createTrack(self, vehicle);
+	end
 	
 	return vehicle;
 end
@@ -144,6 +157,66 @@ function VehicleFramework.createSprings(self, vehicle)
 	end
 end
 
+function VehicleFramework.createTensioners(self, vehicle)
+	local xOffset;
+	for i = 1, vehicle.tensioner.count do
+		if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
+			if (i == vehicle.tensioner.midTensioner) then
+				xOffset = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0;
+			else
+				xOffset = vehicle.tensioner.spacing * (vehicle.tensioner.midTensioner - i) + (vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0);
+			end
+			vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[((i == 1 or i == vehicle.tensioner.count) and "outside" or "inside")]);
+			
+			vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
+			vehicle.tensioner.objects[i].Team = vehicle.general.team;
+			vehicle.tensioner.objects[i].Vel = Vector(0, 0);
+			vehicle.tensioner.objects[i].IgnoresTeamHits = true;
+			MovableMan:AddParticle(vehicle.tensioner.objects[i]);
+		end
+	end
+	vehicle.tensioner.size = vehicle.tensioner.objects[1].Diameter/math.sqrt(2);
+	VehicleFramework.updateTensioners(self, vehicle);
+end
+
+function VehicleFramework.createTrack(self, vehicle)
+end
+
+function VehicleFramework.destroyVehicle(vehicle)
+	if (vehicle ~= nil) then
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+			for _, suspensionObject in ipairs(vehicle.suspension.objects) do
+				if MovableMan:ValidMO(suspensionObject) then
+					suspensionObject.ToDelete = true;
+				end
+			end
+		end
+		for _, wheelObject in ipairs(vehicle.wheel.objects) do
+			if MovableMan:ValidMO(wheelObject) then
+				wheelObject.ToDelete = true;
+			end
+		end
+		if (vehicle.tensioner ~= nil) then
+			for _, tensionerObject in ipairs(vehicle.tensioner.objects) do
+				if MovableMan:ValidMO(tensionerObject) then
+					tensionerObject.ToDelete = true;
+				end
+			end
+		end
+		if (vehicle.track ~= nil) then
+			for _, trackTable in pairs(vehicle.track) do
+				if (type(trackTable) == "table") then
+					for _, trackObject in ipairs(trackTable) do
+						if MovableMan:ValidMO(trackObject) then
+							trackObject.ToDelete = true;
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
 function VehicleFramework.updateVehicle(self, vehicle)
 	local destroyed = VehicleFramework.updateDestruction(self, vehicle);
 	if (not destroyed) then
@@ -152,18 +225,24 @@ function VehicleFramework.updateVehicle(self, vehicle)
 		
 		VehicleFramework.updateThrottle(vehicle);
 		
-		VehicleFramework.updateSprings(self.vehicle);
+		VehicleFramework.updateSprings(vehicle);
 		
-		VehicleFramework.updateWheels(self.vehicle);
+		VehicleFramework.updateWheels(vehicle);
+		
+		VehicleFramework.updateTensioners(self, vehicle);
+		
+		VehicleFramework.updateTrack(self, vehicle);
 		
 		if (not vehicle.general.isInAir) then
-			VehicleFramework.updateChassis(self, self.vehicle);
+			VehicleFramework.updateChassis(self, vehicle);
 		end
 		
-		if (vehicle.suspension.visualsType ~= VehicleFramework.SUSPENSION_VISUALS_TYPE.INVISIBLE) then
+		if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
 			VehicleFramework.updateSuspension(self, vehicle);
 		end
 	end
+	
+	return vehicle;
 end
 
 function VehicleFramework.updateDestruction(self, vehicle)
@@ -189,23 +268,6 @@ function VehicleFramework.updateDestruction(self, vehicle)
 	end
 	
 	return false;
-end
-
-function VehicleFramework.onDestroy(vehicle)
-	if (vehicle ~= nil) then
-		for _, wheelObject in ipairs(vehicle.wheel.objects) do
-			if MovableMan:ValidMO(wheelObject) then
-				wheelObject.ToDelete = true;
-			end
-		end
-		if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
-			for _, suspensionObject in ipairs(vehicle.suspension.objects) do
-				if MovableMan:ValidMO(suspensionObject) then
-					suspensionObject.ToDelete = true;
-				end
-			end
-		end
-	end
 end
 
 function VehicleFramework.updateThrottle(vehicle)
@@ -278,6 +340,17 @@ function VehicleFramework.updateWheels(vehicle)
 	end
 end
 
+function VehicleFramework.updateTensioners(self, vehicle)
+	for i, tensionerObject in ipairs(vehicle.tensioner.objects) do
+		--tensionerObject.AngularVel = vehicle.wheel.objects[1].AngularVel;
+		tensionerObject.RotAngle = vehicle.wheel.objects[1].RotAngle;
+		tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+	end
+end
+
+function VehicleFramework.updateTrack(self, vehicle)
+end
+
 function VehicleFramework.updateChassis(self, vehicle)
 	self:MoveOutOfTerrain(6);
 	self.AngularVel = self.AngularVel * 0.5;
@@ -312,9 +385,9 @@ function VehicleFramework.updateSuspension(self, vehicle)
 		end
 	end
 
-	if (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.DRAWN) then
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
 		VehicleFramework.updateDrawnSuspension(self, vehicle);
-	elseif (vehicle.suspension.visualsType == VehicleFramework.SUSPENSION_VISUALS_TYPE.SPRITE) then
+	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 		VehicleFramework.updateSpriteSuspension(self, vehicle);
 	end
 end
@@ -390,6 +463,9 @@ end
 	self.Suspension[7].RotAngle = (self.Wheels[2].Pos - LeftPos).AbsRadAngle + 1.57
 	--]]
 
+---------------------
+--UTILITY FUNCTIONS--
+---------------------
 function VehicleFramework.drawArrow(startPos, endPos, rotAngle, width, colourIndex)
 	local distance = SceneMan:ShortestDistance(startPos, endPos, SceneMan.SceneWrapsX);
 	endPos = startPos + distance;

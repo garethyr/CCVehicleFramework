@@ -111,22 +111,24 @@ function VehicleFramework.createSuspensionSprites(vehicle)
 end
 
 function VehicleFramework.createWheels(self, vehicle)
-	local calculateWheelInitialPosition = function(rotAngle, vehicle, wheelNumber)
+	local calculateWheelOffsetAndPosition = function(rotAngle, vehicle, wheelNumber)
 		local xOffset;
 		if (wheelNumber == vehicle.wheel.midWheel) then
-			xOffset = vehicle.wheel.evenWheelCount and vehicle.wheel.spacing * 0.5 or 0;
+			xOffset = vehicle.wheel.evenWheelCount and -vehicle.wheel.spacing * 0.5 or 0;
 		else
-			xOffset = vehicle.wheel.spacing * (vehicle.wheel.midWheel - wheelNumber) + (vehicle.wheel.evenWheelCount and vehicle.wheel.spacing * 0.5 or 0);
+			xOffset = vehicle.wheel.spacing * (wheelNumber - vehicle.wheel.midWheel) + (vehicle.wheel.evenWheelCount and -vehicle.wheel.spacing * 0.5 or 0);
 		end
 		
-		return vehicle.general.pos + Vector(xOffset, vehicle.suspension.length[wheelNumber].normal):RadRotate(rotAngle);
+		vehicle.wheel.unrotatedOffsets[wheelNumber] = Vector(xOffset, vehicle.suspension.length[wheelNumber].normal);
+		return vehicle.general.pos + Vector(vehicle.wheel.unrotatedOffsets[wheelNumber].X, vehicle.wheel.unrotatedOffsets[wheelNumber].Y):RadRotate(rotAngle);
 	end
 
+	vehicle.wheel.unrotatedOffsets = {};
 	for i = 1, vehicle.wheel.count do
 		if not MovableMan:ValidMO(vehicle.wheel.objects[i]) then
 			vehicle.wheel.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
 			vehicle.wheel.objects[i].Team = vehicle.general.team;
-			vehicle.wheel.objects[i].Pos = calculateWheelInitialPosition(self.RotAngle, vehicle, i);
+			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
 			MovableMan:AddParticle(vehicle.wheel.objects[i]);
 		end
@@ -160,9 +162,9 @@ function VehicleFramework.createTensioners(self, vehicle)
 		for i = 1, vehicle.tensioner.count do
 			if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
 				if (i == vehicle.tensioner.midTensioner) then
-					xOffset = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0;
+					xOffset = vehicle.tensioner.evenTensionerCount and -vehicle.tensioner.spacing * 0.5 or 0;
 				else
-					xOffset = vehicle.tensioner.spacing * (vehicle.tensioner.midTensioner - i) + (vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0);
+					xOffset = vehicle.tensioner.spacing * (i - vehicle.tensioner.midTensioner) + (vehicle.tensioner.evenTensionerCount and -vehicle.tensioner.spacing * 0.5 or 0);
 				end
 				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[((i == 1 or i == vehicle.tensioner.count) and "outside" or "inside")]);
 				
@@ -396,7 +398,7 @@ function VehicleFramework.updateTrack(self, vehicle)
 end
 
 function VehicleFramework.updateChassis(self, vehicle)
-	local desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.wheel.count].Pos, vehicle.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+	local desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
 	if (self.RotAngle < desiredRotAngle - vehicle.general.deceleration * 2) then
 		self.RotAngle = self.RotAngle + vehicle.general.deceleration;
 	elseif (self.RotAngle > desiredRotAngle + vehicle.general.deceleration * 2) then

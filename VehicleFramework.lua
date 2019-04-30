@@ -51,6 +51,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel object's diameter
 	vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
 	vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
+	vehicle.wheel.isInAir = {};
 	
 	-----------------------
 	--TENSIONER SETTINGS--
@@ -91,13 +92,9 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	
 	VehicleFramework.createSprings(self, vehicle);
 	
-	if (vehicle.tensioner ~= nil) then
-		VehicleFramework.createTensioners(self, vehicle);
-	end
+	VehicleFramework.createTensioners(self, vehicle);
 	
-	if (vehicle.track ~= nil) then
-		--VehicleFramework.createTrack(self, vehicle);
-	end
+	VehicleFramework.createTrack(self, vehicle);
 	
 	return vehicle;
 end
@@ -158,28 +155,40 @@ function VehicleFramework.createSprings(self, vehicle)
 end
 
 function VehicleFramework.createTensioners(self, vehicle)
-	local xOffset;
-	for i = 1, vehicle.tensioner.count do
-		if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
-			if (i == vehicle.tensioner.midTensioner) then
-				xOffset = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0;
-			else
-				xOffset = vehicle.tensioner.spacing * (vehicle.tensioner.midTensioner - i) + (vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0);
+	if (vehicle.tensioner ~= nil) then
+		local xOffset;
+		for i = 1, vehicle.tensioner.count do
+			if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
+				if (i == vehicle.tensioner.midTensioner) then
+					xOffset = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0;
+				else
+					xOffset = vehicle.tensioner.spacing * (vehicle.tensioner.midTensioner - i) + (vehicle.tensioner.evenTensionerCount and vehicle.tensioner.spacing * 0.5 or 0);
+				end
+				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[((i == 1 or i == vehicle.tensioner.count) and "outside" or "inside")]);
+				
+				vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
+				vehicle.tensioner.objects[i].Team = vehicle.general.team;
+				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
+				vehicle.tensioner.objects[i].HitsMOS = false;
+				vehicle.tensioner.objects[i].GetsHitByMOs = false;
+				--Everything below here doesn't seem to work, need to figure out a way to make these not hit the wheels
+				--[[
+				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
+				for _, wheelObject in ipairs(vehicle.wheel.objects) do
+					vehicle.tensioner.objects[i]:SetWhichMOToNotHit(wheelObject, -1);
+				end
+				--]]
+				MovableMan:AddParticle(vehicle.tensioner.objects[i]);
 			end
-			vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[((i == 1 or i == vehicle.tensioner.count) and "outside" or "inside")]);
-			
-			vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
-			vehicle.tensioner.objects[i].Team = vehicle.general.team;
-			vehicle.tensioner.objects[i].Vel = Vector(0, 0);
-			vehicle.tensioner.objects[i].IgnoresTeamHits = true;
-			MovableMan:AddParticle(vehicle.tensioner.objects[i]);
 		end
+		vehicle.tensioner.size = vehicle.tensioner.objects[1].Diameter/math.sqrt(2);
+		VehicleFramework.updateTensioners(self, vehicle);
 	end
-	vehicle.tensioner.size = vehicle.tensioner.objects[1].Diameter/math.sqrt(2);
-	VehicleFramework.updateTensioners(self, vehicle);
 end
 
 function VehicleFramework.createTrack(self, vehicle)
+	if (vehicle.track ~= nil) then
+	end
 end
 
 function VehicleFramework.destroyVehicle(vehicle)
@@ -219,23 +228,21 @@ end
 
 function VehicleFramework.updateVehicle(self, vehicle)
 	local destroyed = VehicleFramework.updateDestruction(self, vehicle);
+	
 	if (not destroyed) then
-		--Need to be fairly precise about this or it might cause a false positive
-		vehicle.general.isInAir = self:GetAltitude(0, 10) > 2 * (vehicle.wheel.size + vehicle.suspension.longest.max);
-		
+		VehicleFramework.updateAltitudeChecks(vehicle);
+	
 		VehicleFramework.updateThrottle(vehicle);
 		
-		VehicleFramework.updateSprings(vehicle);
-		
 		VehicleFramework.updateWheels(vehicle);
+		
+		VehicleFramework.updateSprings(vehicle);
 		
 		VehicleFramework.updateTensioners(self, vehicle);
 		
 		VehicleFramework.updateTrack(self, vehicle);
 		
-		if (not vehicle.general.isInAir) then
-			VehicleFramework.updateChassis(self, vehicle);
-		end
+		VehicleFramework.updateChassis(self, vehicle);
 		
 		if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
 			VehicleFramework.updateSuspension(self, vehicle);
@@ -270,6 +277,38 @@ function VehicleFramework.updateDestruction(self, vehicle)
 	return false;
 end
 
+function VehicleFramework.updateAltitudeChecks(vehicle)
+	local checkAltitudeForWheel;
+	local inAirWheelCount = vehicle.wheel.count;
+	vehicle.wheel.isInAir = {};
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do
+		checkAltitudeForWheel = i == 1 or i == vehicle.wheel.count;
+		
+		if (not checkAltitudeForWheel and vehicle.wheel.count > 4) then
+			if (vehicle.wheel.evenWheelCount) then
+				checkAltitudeForWheel = i <= vehicle.wheel.midWheel and i%2 == 1 or i%2 == 0;
+			else
+				checkAltitudeForWheel = i%2 == 1;
+			end
+		end
+		
+		if (checkAltitudeForWheel) then
+			local alt = wheelObject:GetAltitude(0, vehicle.wheel.size * 0.5);
+			vehicle.wheel.isInAir[i] = alt > vehicle.wheel.size;
+			if (not vehicle.wheel.isInAir[i]) then
+				inAirWheelCount = inAirWheelCount - 1;
+			end
+		end
+	end
+	vehicle.general.isInAir = inAirWheelCount == vehicle.wheel.count;
+	
+	for i = 1, vehicle.wheel.count do
+		if (vehicle.wheel.isInAir[i] == nil) then
+			vehicle.wheel.isInAir[i] = vehicle.general.isInAir;
+		end
+	end
+end
+
 function VehicleFramework.updateThrottle(vehicle)
 	vehicle.general.isDriving = true;
 	if vehicle.general.controller:IsState(Controller.MOVE_LEFT) and vehicle.general.throttle < vehicle.general.maxThrottle then
@@ -291,13 +330,32 @@ function VehicleFramework.updateThrottle(vehicle)
 	end
 end
 
+function VehicleFramework.updateWheels(vehicle)
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do
+		wheelObject.AngularVel = vehicle.general.throttle;
+		
+		--At some point rot angle can go too high, reset it if it's past 360 for safety
+		if (wheelObject.RotAngle > math.pi*2) then
+			wheelObject.RotAngle = wheelObject.RotAngle - math.pi*2;
+		elseif (wheelObject.RotAngle < -math.pi*2) then
+			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
+		end
+		
+		if (vehicle.wheel.isInAir[i]) then
+			wheelObject.Pos = vehicle.suspension.springs[i].pos[2].max;
+			wheelObject.Vel.Y = vehicle.general.vel.Y;
+			--wheelObject.Vel.Y = wheelObject.Vel.Y - SceneMan.GlobalAcc.Magnitude*TimerMan.DeltaTimeSecs;
+		end
+	end
+end
+
 function VehicleFramework.updateSprings(vehicle)
 	local wheelObject;
 	for i, spring in ipairs(vehicle.suspension.springs) do
 		wheelObject = vehicle.wheel.objects[i];
-		
 		if (spring ~= nil) then
-			vehicle.suspension.springs[i] = SpringFramework.update(spring, vehicle.general.isInAir); --Don't update objects if in air, calculations need to be update because they're used elsewhere
+			--Don't update objects if in air, calculations need to be update because they're used elsewhere
+			vehicle.suspension.springs[i] = SpringFramework.update(spring, vehicle.wheel.isInAir[i]);
 			spring = vehicle.suspension.springs[i];
 		end
 		if (spring ~= nil and spring.actionsPerformed ~= nil) then
@@ -322,57 +380,45 @@ function VehicleFramework.updateSprings(vehicle)
 	end
 end
 
-function VehicleFramework.updateWheels(vehicle)
-	for i, wheelObject in ipairs(vehicle.wheel.objects) do
-		wheelObject.AngularVel = vehicle.general.throttle;
-		
-		--At some point rot angle can go too high, reset it if it's past 360 for safety
-		if (wheelObject.RotAngle > math.pi*2) then
-			wheelObject.RotAngle = wheelObject.RotAngle - math.pi*2;
-		elseif (wheelObject.RotAngle < -math.pi*2) then
-			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
-		end
-		
-		if (vehicle.general.isInAir) then
-			wheelObject.Pos = vehicle.suspension.springs[i].pos[2].rest - Vector();
-			wheelObject.Vel.Y = wheelObject.Vel.Y - SceneMan.GlobalAcc.Magnitude*TimerMan.DeltaTimeSecs;
-		end
-	end
-end
-
 function VehicleFramework.updateTensioners(self, vehicle)
-	for i, tensionerObject in ipairs(vehicle.tensioner.objects) do
-		--tensionerObject.AngularVel = vehicle.wheel.objects[1].AngularVel;
-		tensionerObject.RotAngle = vehicle.wheel.objects[1].RotAngle;
-		tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+	if (vehicle.tensioner ~= nil) then
+		for i, tensionerObject in ipairs(vehicle.tensioner.objects) do
+			--tensionerObject.AngularVel = vehicle.wheel.objects[1].AngularVel;
+			tensionerObject.RotAngle = vehicle.wheel.objects[1].RotAngle;
+			tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+		end
 	end
 end
 
 function VehicleFramework.updateTrack(self, vehicle)
+	if (vehicle.track ~= nil) then
+	end
 end
 
 function VehicleFramework.updateChassis(self, vehicle)
-	self:MoveOutOfTerrain(6);
-	self.AngularVel = self.AngularVel * 0.5;
-	
 	local desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.wheel.count].Pos, vehicle.wheel.objects[1].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
 	if (self.RotAngle < desiredRotAngle - vehicle.general.deceleration * 2) then
 		self.RotAngle = self.RotAngle + vehicle.general.deceleration;
 	elseif (self.RotAngle > desiredRotAngle + vehicle.general.deceleration * 2) then
 		self.RotAngle = self.RotAngle - vehicle.general.deceleration;
 	end
-	
-	if (vehicle.general.vel.Magnitude > vehicle.general.maxSpeed) then
-		self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
-	elseif (not vehicle.general.isDriving) then
-		if (vehicle.general.isStronglyDecelerating) then
-			self.Vel = self.Vel * (1 - vehicle.general.deceleration * 10);
-		else
-			self.Vel = self.Vel * (1 - vehicle.general.deceleration);
-		end
-	
-		if (self.Vel.Magnitude < vehicle.general.acceleration) then
-			self.Vel = Vector(0, 0);
+		
+	if (not vehicle.general.isInAir) then
+		self:MoveOutOfTerrain(6);
+		self.AngularVel = self.AngularVel * 0.5;
+		
+		if (vehicle.general.vel.Magnitude > vehicle.general.maxSpeed) then
+			self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
+		elseif (not vehicle.general.isDriving) then
+			if (vehicle.general.isStronglyDecelerating) then
+				self.Vel = self.Vel * (1 - vehicle.general.deceleration * 10);
+			else
+				self.Vel = self.Vel * (1 - vehicle.general.deceleration);
+			end
+		
+			if (self.Vel.Magnitude < vehicle.general.acceleration) then
+				self.Vel = Vector(0, 0);
+			end
 		end
 	end
 end

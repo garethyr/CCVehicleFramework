@@ -473,8 +473,8 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 		end
 		
 		if (checkAltitudeForWheel) then
-			local alt = wheelObject:GetAltitude(0, vehicle.wheel.size * 0.5);
-			vehicle.wheel.isInAir[i] = alt > vehicle.wheel.size;
+			local wheelAltitude = wheelObject:GetAltitude(0, vehicle.wheel.size);
+			vehicle.wheel.isInAir[i] = wheelAltitude > vehicle.wheel.size * 2;
 			if (not vehicle.wheel.isInAir[i]) then
 				inAirWheelCount = inAirWheelCount - 1;
 			end
@@ -520,12 +520,6 @@ function VehicleFramework.updateWheels(vehicle)
 		elseif (wheelObject.RotAngle < -math.pi*2) then
 			wheelObject.RotAngle = wheelObject.RotAngle + math.pi*2;
 		end
-		
-		if (vehicle.wheel.isInAir[i]) then
-			wheelObject.Pos = vehicle.suspension.springs[i].pos[2].max;
-			wheelObject.Vel.Y = vehicle.general.vel.Y;
-			--wheelObject.Vel.Y = wheelObject.Vel.Y - SceneMan.GlobalAcc.Magnitude*TimerMan.DeltaTimeSecs;
-		end
 	end
 end
 
@@ -534,8 +528,7 @@ function VehicleFramework.updateSprings(vehicle)
 	for i, spring in ipairs(vehicle.suspension.springs) do
 		wheelObject = vehicle.wheel.objects[i];
 		if (spring ~= nil) then
-			--Don't update objects if in air, calculations need to be update because they're used elsewhere
-			vehicle.suspension.springs[i] = SpringFramework.update(spring, vehicle.wheel.isInAir[i]);
+			vehicle.suspension.springs[i] = SpringFramework.update(spring);
 			spring = vehicle.suspension.springs[i];
 		end
 		if (spring ~= nil and spring.actionsPerformed ~= nil) then

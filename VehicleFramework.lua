@@ -459,34 +459,19 @@ end
 
 function VehicleFramework.updateAltitudeChecks(vehicle)
 	local checkAltitudeForWheel;
-	local inAirWheelCount = vehicle.wheel.count;
+	local inAirWheelCount = 0;
 	vehicle.wheel.isInAir = {};
 	for i, wheelObject in ipairs(vehicle.wheel.objects) do
-		checkAltitudeForWheel = i == 1 or i == vehicle.wheel.count;
+		local wheelAltitude = wheelObject:GetAltitude(0, vehicle.wheel.size);
+		vehicle.wheel.isInAir[i] = false;
 		
-		if (not checkAltitudeForWheel and vehicle.wheel.count > 4) then
-			if (vehicle.wheel.evenWheelCount) then
-				checkAltitudeForWheel = i <= vehicle.wheel.midWheel and i%2 == 1 or i%2 == 0;
-			else
-				checkAltitudeForWheel = i%2 == 1;
-			end
-		end
-		
-		if (checkAltitudeForWheel) then
-			local wheelAltitude = wheelObject:GetAltitude(0, vehicle.wheel.size);
-			vehicle.wheel.isInAir[i] = wheelAltitude > vehicle.wheel.size * 2;
-			if (not vehicle.wheel.isInAir[i]) then
-				inAirWheelCount = inAirWheelCount - 1;
-			end
+		if (wheelAltitude > vehicle.wheel.size * 2) then
+			vehicle.wheel.isInAir[i] = true;
+			inAirWheelCount = inAirWheelCount + 1;
 		end
 	end
 	vehicle.general.isInAir = inAirWheelCount == vehicle.wheel.count;
-	
-	for i = 1, vehicle.wheel.count do
-		if (vehicle.wheel.isInAir[i] == nil) then
-			vehicle.wheel.isInAir[i] = vehicle.general.isInAir;
-		end
-	end
+	vehicle.general.halfOrMoreInAir = inAirWheelCount > vehicle.wheel.count * 0.5;
 end
 
 function VehicleFramework.updateThrottle(vehicle)
@@ -618,11 +603,11 @@ function VehicleFramework.validateTrackIntegrity(vehicle)
 end
 
 function VehicleFramework.updateChassis(self, vehicle)
-	--Correct rotangle based either on the direction between wheels or, if 1 outer wheel is in the air but the other isn't, the direction that moves them both towards the ground
+	--Correct rotangle based either on the direction between wheels or, if one outer wheel is in the air but the other isn't, the direction that rotates the tank to be on the ground
 	local desiredRotAngle;
-	if (not vehicle.general.isInAir and vehicle.wheel.isInAir[1] and not vehicle.wheel.isInAir[vehicle.wheel.count]) then
+	if (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[1] and not vehicle.wheel.isInAir[vehicle.wheel.count]) then
 		desiredRotAngle = self.RotAngle + 1;
-	elseif (not vehicle.general.isInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
+	elseif (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
 		desiredRotAngle = self.RotAngle - 1;
 	else
 		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;

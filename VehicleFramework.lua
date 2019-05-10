@@ -13,7 +13,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	--GENERAL SETTINGS--
 	--------------------
 	vehicle.general.fullyCreated = vehicle.general.fullyCreated or 0;
-	if (vehicle.general.fullyCreated < 1) then
+	if (vehicle.general.fullyCreated == 0) then
 		vehicle.general.team = self.Team;
 		vehicle.general.pos = self.Pos;
 		vehicle.general.vel = self.Vel;
@@ -107,7 +107,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		
 		VehicleFramework.createTrack(self, vehicle);
 		
-		vehicle.fullyCreated = true;
+		vehicle.general.fullyCreated = true;
 		return vehicle;
 	end
 end
@@ -186,6 +186,7 @@ function VehicleFramework.createTensioners(self, vehicle)
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].HitsMOS = false;
 				vehicle.tensioner.objects[i].GetsHitByMOs = false;
+				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
 				--Everything below here doesn't seem to work, need to figure out a way to make these not hit the wheels
 				--[[
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
@@ -210,12 +211,12 @@ function VehicleFramework.createTrack(self, vehicle)
 			if not MovableMan:ValidMO(vehicle.track.objects[i]) then
 				vehicle.track.objects[i] = CreateMOSRotating(vehicle.track.objectName, vehicle.track.objectRTE);
 				vehicle.track.objects[i].Team = vehicle.general.team;
-				vehicle.track.objects[i].Vel = Vector(0, 0);
+				vehicle.track.objects[i].Vel = Vector();
 				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
 				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
 				vehicle.track.objects[i].HitsMOS = false;
 				vehicle.track.objects[i].GetsHitByMOs = false;
-				--vehicle.track.IgnoresTeamHits = true;
+				vehicle.track.IgnoresTeamHits = true;
 				MovableMan:AddParticle(vehicle.track.objects[i]);
 			end
 		end
@@ -363,7 +364,7 @@ function VehicleFramework.destroyVehicle(vehicle)
 end
 
 function VehicleFramework.updateVehicle(self, vehicle)
-	if (vehicle.fullyCreated ~= true) then
+	if (vehicle.general.fullyCreated ~= true) then
 		return VehicleFramework.createVehicle(self, vehicle);
 	end
 
@@ -371,7 +372,7 @@ function VehicleFramework.updateVehicle(self, vehicle)
 	
 	if (not destroyed) then
 		VehicleFramework.updateAltitudeChecks(vehicle);
-	
+		
 		VehicleFramework.updateThrottle(vehicle);
 		
 		VehicleFramework.updateWheels(vehicle);
@@ -379,57 +380,15 @@ function VehicleFramework.updateVehicle(self, vehicle)
 		VehicleFramework.updateSprings(vehicle);
 		
 		VehicleFramework.updateTensioners(self, vehicle);
-		--[[
-		--Disable this if you want to see tracks being created 1 at a time to see what they're doing for positioning, might break unless you comment out updateTrack
-		if (self.thing == nil) then
-			self.count = 0;
-			self.thing = coroutine.create(SomethingOrOther);
-		end
-		self.count = self.count + 1;
-		if (self.count%20 == 0) then
-			local r1, r2 = coroutine.resume(self.thing, self, vehicle);
-		end
-		for i, inflection in ipairs(vehicle.track.inflection) do
-			--FrameMan:DrawTextPrimitive(self.Pos + inflection.trackStart, "S"..tostring(i), true, 1);
-			--FrameMan:DrawTextPrimitive(self.Pos + inflection.trackEnd, "E"..tostring(i), true, 1);
-		end
-		--]]
+		
 		VehicleFramework.updateTrack(self, vehicle);
 		
 		VehicleFramework.updateChassis(self, vehicle);
 		
-		if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
-			VehicleFramework.updateSuspension(self, vehicle);
-		end
+		VehicleFramework.updateSuspension(self, vehicle);
 	end
 	
 	return vehicle;
-end
-
-function SomethingOrOther(self, vehicle)
-	local i = 1;
-	while (i <= vehicle.track.count) do
-		if (not MovableMan:ValidMO(vehicle.track.objects[i])) then
-			if (not pause) then
-				vehicle.track.objects[i] = CreateMOSRotating(vehicle.track.objectName, vehicle.track.objectRTE);
-				vehicle.track.objects[i].Team = vehicle.general.team;
-				vehicle.track.objects[i].Vel = Vector(0, 0);
-				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
-				vehicle.track.objects[i].HitsMOS = false;
-				vehicle.track.objects[i].GetsHitByMOs = false;
-				--vehicle.track.IgnoresTeamHits = true;
-				for k, v in ipairs(vehicle.track.extraFillers) do
-					if (i == v) then
-						print("Placing extra filler at "..tostring(vehicle.track.objects[i].Pos).." with RotAngle "..tostring(vehicle.track.objects[i].RotAngle)..", previous one was at "..tostring(vehicle.track.objects[i-1].Pos).." with RotAngle "..tostring(vehicle.track.objects[i-1].RotAngle));
-					end
-				end
-				MovableMan:AddParticle(vehicle.track.objects[i]);
-				i = i + 1;
-			end
-			coroutine.yield();
-		end
-	end
 end
 
 function VehicleFramework.updateDestruction(self, vehicle)
@@ -551,7 +510,6 @@ end
 function VehicleFramework.updateTrack(self, vehicle)
 	if (vehicle.track ~= nil) then
 		--VehicleFramework.validateTrackIntegrity(vehicle);
-		
 		local prevTrackObject, nextTrackObject, prevTrackDistance, nextTrackDistance, anchorDistance;
 		local currentInflectionNumber = 1;
 		local currentInflection = vehicle.track.inflection[currentInflectionNumber];
@@ -561,24 +519,24 @@ function VehicleFramework.updateTrack(self, vehicle)
 			prevTrackObject = vehicle.track.objects[(i == 1 and #vehicle.track.objects or i - 1)];
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
 			
+			local mod = SceneMan.SceneWrapsX and SceneMan.Scene.Width or 1;
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
 				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+				--trackObject.Pos = Vector(pos.X%mod, pos.Y);
+				--print("Track Start "..tostring(i).." pos set to "..tostring(trackObject.Pos));
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
 				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+				--trackObject.Pos = Vector(pos.X%mod, pos.Y);
+				--print("Track End "..tostring(i).." pos set to "..tostring(trackObject.Pos));
 
 				currentInflectionNumber = currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
 			else
 				trackObject.Pos = (prevTrackObject.Pos + nextTrackObject.Pos) * 0.5;
 			end
+			trackObject.Pos.X = SceneMan.SceneWrapsX and trackObject.Pos.X%SceneMan.Scene.Width or trackObject.Pos.X;
 			
-			local distanceFromPreviousToNext = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX);
-			local diffAngle =distanceFromPreviousToNext.AbsRadAngle --(distanceFromPreviousToNext.AbsRadAngle + 2*math.pi)%(2*math.pi); --(distanceFromPreviousToNext.AbsRadAngle - math.pi)%(math.pi * 2);-- + math.pi)%(math.pi * 2);
-			local minAngle = ((self.RotAngle + vehicle.track.directions[i] - vehicle.track.maxRotationDeviation + 2*math.pi)%(2*math.pi));
-			local maxAngle = (self.RotAngle + vehicle.track.directions[i] + vehicle.track.maxRotationDeviation);
-			trackObject.RotAngle = Clamp(diffAngle, math.min(minAngle, maxAngle), math.max(minAngle, maxAngle));
-			
-			local angleOffset = diffAngle - self.RotAngle - vehicle.track.directions[i];
+			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - self.RotAngle - vehicle.track.directions[i];
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
 			trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i] + clampedAngle;
 			
@@ -639,17 +597,19 @@ function VehicleFramework.updateChassis(self, vehicle)
 end
 
 function VehicleFramework.updateSuspension(self, vehicle)
-	for i, spring in ipairs(vehicle.suspension.springs) do
-		vehicle.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, vehicle.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
-		if (i ~= vehicle.wheel.count) then
-			vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] - Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
+	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
+		for i, spring in ipairs(vehicle.suspension.springs) do
+			vehicle.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, vehicle.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
+			if (i ~= vehicle.wheel.count) then
+				vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] - Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
+			end
 		end
-	end
 
-	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
-		VehicleFramework.updateDrawnSuspension(self, vehicle);
-	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
-		VehicleFramework.updateSpriteSuspension(self, vehicle);
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+			VehicleFramework.updateDrawnSuspension(self, vehicle);
+		elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+			VehicleFramework.updateSpriteSuspension(self, vehicle);
+		end
 	end
 end
 

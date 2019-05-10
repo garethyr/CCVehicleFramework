@@ -570,10 +570,12 @@ function VehicleFramework.updateChassis(self, vehicle)
 	else
 		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
 	end
-	if (self.RotAngle < desiredRotAngle - vehicle.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle + vehicle.general.deceleration;
-	elseif (self.RotAngle > desiredRotAngle + vehicle.general.deceleration * 2) then
-		self.RotAngle = self.RotAngle - vehicle.general.deceleration;
+	if (self.RotAngle < desiredRotAngle - vehicle.general.angleCorrection * 1.1) then
+		self.RotAngle = self.RotAngle + vehicle.general.angleCorrection;
+	elseif (self.RotAngle > desiredRotAngle + vehicle.general.angleCorrection * 1.1) then
+		self.RotAngle = self.RotAngle - vehicle.general.angleCorrection;
+	else
+		self.RotAngle = desiredRotAngle;
 	end
 		
 	if (not vehicle.general.isInAir) then

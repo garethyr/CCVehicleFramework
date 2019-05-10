@@ -157,7 +157,7 @@ function VehicleFramework.createSprings(self, vehicle)
 			stiffness = vehicle.suspension.stiffness,
 			stiffnessMultiplier = {self.Mass/vehicle.wheel.count, vehicle.wheel.objects[i].Mass},
 			offsets = Vector(vehicle.wheel.objects[i].Pos.X - vehicle.general.pos.X, 0),
-			applyForcesAtOffset = false,
+			applyForcesAtOffset = true,
 			lockToSpringRotation = true,
 			inheritsRotAngle = 1,
 			rotAngleOffset = -math.pi*0.5,
@@ -575,44 +575,6 @@ function VehicleFramework.updateTrack(self, vehicle)
 			
 			prevTrackObject = vehicle.track.objects[(i == 1 and #vehicle.track.objects or i - 1)];
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
-			--[[prevTrackDistance = SceneMan:ShortestDistance(trackObject.Pos, prevTrackObject.Pos, SceneMan.SceneWrapsX);
-			nextTrackDistance = SceneMan:ShortestDistance(trackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX);
-			
-			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
-				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				trackObject.RotAngle = Clamp((prevTrackObject.Pos - nextTrackObject.Pos).AbsRadAngle, self.RotAngle + vehicle.track.directions[i] - 0.17, self.RotAngle + vehicle.track.directions[i] + 0.17);
-			
-				anchorDistance = SceneMan:ShortestDistance(vehicle.general.pos + currentInflection.point, trackObject.Pos, SceneMan.SceneWrapsX);
-				--trackObject:AddForce(anchorDistance.Normalized * vehicle.track.connectionStiffness * trackObject.Mass, Vector());
-				local forceLine = Vector(anchorDistance.Normalized.X, anchorDistance.Normalized.Y):SetMagnitude(10);
-				local drawStartPos =  trackObject.Pos;
-				--SpringFramework.drawArrow(drawStartPos, drawStartPos + forceLine, self.RotAngle, 5, 254);
-			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
-				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				trackObject.RotAngle = Clamp((prevTrackObject.Pos - nextTrackObject.Pos).AbsRadAngle, self.RotAngle + vehicle.track.directions[i] - 0.17, self.RotAngle + vehicle.track.directions[i] + 0.17);
-				
-				anchorDistance = SceneMan:ShortestDistance(vehicle.general.pos + currentInflection.next.point, trackObject.Pos, SceneMan.SceneWrapsX);
-				--trackObject:AddForce(anchorDistance.Normalized * vehicle.track.connectionStiffness * trackObject.Mass, Vector());
-				local forceLine = Vector(anchorDistance.Normalized.X, anchorDistance.Normalized.Y):SetMagnitude(10);
-				local drawStartPos =  trackObject.Pos;
-				--SpringFramework.drawArrow(drawStartPos, drawStartPos + forceLine, self.RotAngle, 5, 254);
-				
-				currentInflectionNumber = currentInflectionNumber + 1;
-				currentInflection = vehicle.track.inflection[currentInflectionNumber];
-			else
-				--trackObject:AddForce(prevTrackDistance * vehicle.track.connectionStiffness * trackObject.Mass, prevTrackDistance);
-				local forceLine = Vector(prevTrackDistance.Normalized.X, prevTrackDistance.Normalized.Y):SetMagnitude(10);
-				local drawStartPos =  trackObject.Pos;
-				--SpringFramework.drawArrow(drawStartPos, drawStartPos + forceLine, self.RotAngle, 5, 5);
-				
-				--trackObject:AddForce(nextTrackDistance * vehicle.track.connectionStiffness * trackObject.Mass, nextTrackDistance);
-				local forceLine = Vector(nextTrackDistance.Normalized.X, nextTrackDistance.Normalized.Y):SetMagnitude(10);
-				local drawStartPos =  trackObject.Pos;
-				--SpringFramework.drawArrow(drawStartPos, drawStartPos + forceLine, self.RotAngle, 5, 0);
-				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				trackObject.RotAngle = (prevTrackObject.Pos - nextTrackObject.Pos).AbsRadAngle;
-			end--]]
-			
 			
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
 				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
@@ -623,7 +585,6 @@ function VehicleFramework.updateTrack(self, vehicle)
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
 			else
 				trackObject.Pos = (prevTrackObject.Pos + nextTrackObject.Pos) * 0.5;
-				--trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
 			end
 			
 			local distanceFromPreviousToNext = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX);
@@ -632,12 +593,6 @@ function VehicleFramework.updateTrack(self, vehicle)
 			local maxAngle = (self.RotAngle + vehicle.track.directions[i] + vehicle.track.maxRotationDeviation);
 			trackObject.RotAngle = Clamp(diffAngle, math.min(minAngle, maxAngle), math.max(minAngle, maxAngle));
 			
-			
-			--[[if (diffAngle > minAngle or diffAngle < maxAngle) then
-				angleX = 270;
-			elseif (angleX < 180  angleX > 90)
-				angleX = 90;
-			end--]]
 			local angleOffset = diffAngle - self.RotAngle - vehicle.track.directions[i];
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
 			trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i] + clampedAngle;
@@ -646,8 +601,6 @@ function VehicleFramework.updateTrack(self, vehicle)
 				--print("diffangle is "..tostring(diffAngle)..", angleOffset is "..tostring(angleOffset)..", clampedAngle is "..tostring(clampedAngle).." so rotAngle is "..tostring(trackObject.RotAngle));
 				--print("diffAngle is "..tostring(diffAngle*(180/math.pi))..", vehicle rotAngle is "..tostring(self.RotAngle*(180/math.pi))..", direction is "..tostring(vehicle.track.directions[i]*(180/math.pi)).." min is "..tostring(minAngle*(180/math.pi))..", max is "..tostring(maxAngle*(180/math.pi))..", rotAngle set to "..tostring(trackObject.RotAngle*(180/math.pi)));
 			end
-			
-			--trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i];
 		end
 	end
 end
@@ -665,7 +618,15 @@ function VehicleFramework.validateTrackIntegrity(vehicle)
 end
 
 function VehicleFramework.updateChassis(self, vehicle)
-	local desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+	--Correct rotangle based either on the direction between wheels or, if 1 outer wheel is in the air but the other isn't, the direction that moves them both towards the ground
+	local desiredRotAngle;
+	if (not vehicle.general.isInAir and vehicle.wheel.isInAir[1] and not vehicle.wheel.isInAir[vehicle.wheel.count]) then
+		desiredRotAngle = self.RotAngle + 1;
+	elseif (not vehicle.general.isInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
+		desiredRotAngle = self.RotAngle - 1;
+	else
+		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+	end
 	if (self.RotAngle < desiredRotAngle - vehicle.general.deceleration * 2) then
 		self.RotAngle = self.RotAngle + vehicle.general.deceleration;
 	elseif (self.RotAngle > desiredRotAngle + vehicle.general.deceleration * 2) then

@@ -158,12 +158,12 @@ function VehicleFramework.createSprings(self, vehicle)
 			stiffnessMultiplier = {self.Mass/vehicle.wheel.count, vehicle.wheel.objects[i].Mass},
 			offsets = Vector(vehicle.wheel.objects[i].Pos.X - vehicle.general.pos.X, 0),
 			applyForcesAtOffset = true,
-			lockToSpringRotation = true,
+			lockToSpringRotation = not vehicle.general.forceWheelHorizontalLocking,
 			inheritsRotAngle = 1,
 			rotAngleOffset = -math.pi*0.5,
 			outsideOfConfinesAction = {SpringFramework.OutsideOfConfinesOptions.DO_NOTHING, SpringFramework.OutsideOfConfinesOptions.MOVE_TO_REST_POSITION},
 			confinesToCheck = {min = false, absolute = true, max = true},
-			showDebug = false
+			showDebug = vehicle.general.showDebug
 		}
 		vehicle.suspension.springs[i] = SpringFramework.create(self, vehicle.wheel.objects[i], springConfig);
 	end
@@ -474,6 +474,11 @@ function VehicleFramework.updateSprings(vehicle)
 		if (spring ~= nil) then
 			vehicle.suspension.springs[i] = SpringFramework.update(spring);
 			spring = vehicle.suspension.springs[i];
+			
+			if (vehicle.general.forceWheelHorizontalLocking == true) then
+				local wheelDeviation = SceneMan:ShortestDistance(spring.targetPos[1], wheelObject.Pos, SceneMan.SceneWrapsX):RadRotate(-spring.rotAngle);
+				wheelObject.Pos = spring.targetPos[1] + Vector(wheelDeviation.X, 0):RadRotate(spring.rotAngle);
+			end
 		end
 		if (spring ~= nil and spring.actionsPerformed ~= nil) then
 			if (not spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then

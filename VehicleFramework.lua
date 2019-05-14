@@ -435,10 +435,14 @@ end
 
 function VehicleFramework.updateThrottle(vehicle)
 	vehicle.general.isDriving = true;
+	vehicle.general.movingOppositeToThrottle = false;
+	
 	if vehicle.general.controller:IsState(Controller.MOVE_LEFT) and vehicle.general.throttle < vehicle.general.maxThrottle then
 		vehicle.general.throttle = vehicle.general.throttle + vehicle.general.acceleration;
+		vehicle.general.movingOppositeToThrottle = vehicle.general.throttle < 0;
 	elseif vehicle.general.controller:IsState(Controller.MOVE_RIGHT) and vehicle.general.throttle > -vehicle.general.maxThrottle then
 		vehicle.general.throttle = vehicle.general.throttle - vehicle.general.acceleration;
+		vehicle.general.movingOppositeToThrottle = vehicle.general.throttle > 0;
 	else
 		vehicle.general.isDriving = false;
 		if (math.abs(vehicle.general.throttle) < vehicle.general.acceleration * 20) then
@@ -452,6 +456,7 @@ function VehicleFramework.updateThrottle(vehicle)
 			vehicle.general.throttle = 0;
 		end
 	end
+	vehicle.general.throttle = math.min(vehicle.general.throttle, vehicle.general.maxThrottle);
 end
 
 function VehicleFramework.updateWheels(vehicle)
@@ -589,15 +594,17 @@ function VehicleFramework.updateChassis(self, vehicle)
 		
 		if (vehicle.general.vel.Magnitude > vehicle.general.maxSpeed) then
 			self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
-		elseif (not vehicle.general.isDriving) then
-			if (vehicle.general.isStronglyDecelerating) then
-				self.Vel = self.Vel * (1 - vehicle.general.deceleration * 10);
-			else
-				self.Vel = self.Vel * (1 - vehicle.general.deceleration);
-			end
+		else
+			if (not vehicle.general.isDriving) then
+				self.Vel = self.Vel * (1 - vehicle.general.deceleration * (vehicle.general.isStronglyDecelerating and 2 or 1));
 		
-			if (self.Vel.Magnitude < vehicle.general.acceleration) then
-				self.Vel = Vector(0, 0);
+				if (self.Vel.Magnitude < vehicle.general.acceleration and vehicle.general.throttle == 0) then
+					self.Vel = Vector(0, 0);
+				end
+			else
+				if (vehicle.general.movingOppositeToThrottle) then
+					self.Vel = self.Vel * (1 - vehicle.general.acceleration * 0.1);
+				end
 			end
 		end
 	end

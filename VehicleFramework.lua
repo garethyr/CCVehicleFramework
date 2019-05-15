@@ -1,10 +1,10 @@
-package.loaded["SpringFramework/SpringFramework"] = nil; --TODO killme
 require("SpringFramework/SpringFramework");
 
 VehicleFramework = {};
 
 --Enums and Constants
 VehicleFramework.SuspensionVisualsType = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
+VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2}
 
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
@@ -78,6 +78,10 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 			vehicle.track.extraFillers = {};
 			vehicle.track.directions = {};
 			vehicle.track.objects = {};
+			if (vehicle.track.inflection == nil) then
+				vehicle.track.tensionerAnchorType = vehicle.track.tensionerAnchorType or VehicleFramework.TrackAnchorType.ALL;
+				vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.ALL;
+			end
 		end
 		
 		------------------------
@@ -226,9 +230,12 @@ end
 function VehicleFramework.setupTrackInflection(vehicle)
 	if (vehicle.track.inflection == nil) then
 		vehicle.track.inflectionStartOffsetDirection = Vector(0, -1);
+		
 		vehicle.track.inflection = {};
-		local inflectionConfig;
-		for i = 1, vehicle.tensioner.count, (vehicle.tensioner.count - 1) do
+		local inflectionConfig, iteratorIncrement;
+		
+		iteratorIncrement = vehicle.track.tensionerAnchorType == VehicleFramework.TrackAnchorType.FIRST_AND_LAST and (vehicle.tensioner.count - 1) or 1;
+		for i = 1, vehicle.tensioner.count, iteratorIncrement do
 			inflectionConfig = {
 				point = vehicle.tensioner.unrotatedOffsets[i],
 				object = vehicle.tensioner.objects[i],
@@ -236,7 +243,9 @@ function VehicleFramework.setupTrackInflection(vehicle)
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
 		end
-		for i = vehicle.wheel.count, 1, -(vehicle.wheel.count - 1) do
+		
+		iteratorIncrement = vehicle.track.wheelAnchorType == VehicleFramework.TrackAnchorType.FIRST_AND_LAST and (vehicle.wheel.count - 1) or 1;
+		for i = vehicle.wheel.count, 1, -iteratorIncrement do
 			inflectionConfig = {
 				point = vehicle.wheel.unrotatedOffsets[i],
 				object = vehicle.wheel.objects[i],

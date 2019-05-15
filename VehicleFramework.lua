@@ -216,7 +216,7 @@ function VehicleFramework.createTrack(self, vehicle)
 				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
 				vehicle.track.objects[i].HitsMOS = false;
 				vehicle.track.objects[i].GetsHitByMOs = false;
-				vehicle.track.IgnoresTeamHits = true;
+				vehicle.track.objects[i].IgnoresTeamHits = true;
 				MovableMan:AddParticle(vehicle.track.objects[i]);
 			end
 		end
@@ -240,12 +240,12 @@ function VehicleFramework.setupTrackInflection(vehicle)
 			{
 				point = vehicle.wheel.unrotatedOffsets[#vehicle.wheel.unrotatedOffsets],
 				object = vehicle.wheel.objects[#vehicle.wheel.objects],
-				objectSize = vehicle.wheel.size * 1.05
+				objectSize = vehicle.wheel.size
 			},
 			{
 				point = vehicle.wheel.unrotatedOffsets[1],
 				object = vehicle.wheel.objects[1],
-				objectSize = vehicle.wheel.size * 1.05
+				objectSize = vehicle.wheel.size
 			}
 		};
 	end
@@ -257,10 +257,13 @@ function VehicleFramework.setupTrackInflection(vehicle)
 		inflection.directionVectorToNext = Vector(math.cos(inflection.directionToNext), -math.sin(inflection.directionToNext)).Normalized;
 	end
 	
+	local offsetDirection;
+	local trackTightnessMultiplier = 0.5/vehicle.track.tightness;
 	for i, inflection in ipairs(vehicle.track.inflection) do
 		local offsetDirection = Vector(vehicle.track.inflectionStartOffsetDirection.X, vehicle.track.inflectionStartOffsetDirection.Y):RadRotate(inflection.directionToNext);
-		inflection.trackStart = inflection.point + offsetDirection * (inflection.objectSize * 0.5 + vehicle.track.size.Y * 0.5);
-		inflection.trackEnd = inflection.next.point + offsetDirection * (inflection.next.objectSize * 0.5 + vehicle.track.size.Y * 0.5);
+		
+		inflection.trackStart = inflection.point + offsetDirection * (inflection.objectSize * trackTightnessMultiplier + vehicle.track.size.Y * trackTightnessMultiplier);
+		inflection.trackEnd = inflection.next.point + offsetDirection * (inflection.next.objectSize * trackTightnessMultiplier + vehicle.track.size.Y * trackTightnessMultiplier);
 		
 		inflection.trackDistance = SceneMan:ShortestDistance(inflection.trackStart, inflection.trackEnd, SceneMan.SceneWrapsX);
 		inflection.trackDirection = inflection.trackDistance.AbsRadAngle;
@@ -283,12 +286,11 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 				numberOfTracks = 2;
 			else
 				local remainderDistance = inflection.trackDistance.Magnitude%vehicle.track.size.X;
-				local remainderPercent = remainderDistance/vehicle.track.size.X;
 				extraFillerTrack = numberOfTracks * 0.1 <= remainderDistance;
 				if (extraFillerTrack == true) then
-					print("Adding extra filler track for inflection "..tostring(i))
+					print("Adding extra filler track for inflection "..tostring(i));
 				else
-					print("NOT Adding extra filler track for inflection "..tostring(i))
+					print("NOT Adding extra filler track for inflection "..tostring(i));
 				end
 			end
 		end
@@ -489,7 +491,7 @@ function VehicleFramework.updateSprings(vehicle)
 			if (not spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then
 				wheelObject:MoveOutOfTerrain(6); --TODO Consider doing this all the time
 				
-				if vehicle.general.vel.Magnitude < 5 and math.abs(vehicle.general.throttle) > vehicle.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > vehicle.general.maxThrottle * 0.5 then
+				if (vehicle.general.maxErasableTerrainStrength > 0 and vehicle.general.vel.Magnitude < 5 and math.abs(vehicle.general.throttle) > vehicle.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > vehicle.general.maxThrottle * 0.5) then
 					--Check terrain strength at the wheel's position and its 4 center edges
 					local erasableTerrain = {
 						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
@@ -524,27 +526,20 @@ function VehicleFramework.updateTrack(self, vehicle)
 		local currentInflectionNumber = 1;
 		local currentInflection = vehicle.track.inflection[currentInflectionNumber];
 		for i, trackObject in ipairs(vehicle.track.objects) do
-			trackObject.Vel = self.Vel;
-			
 			prevTrackObject = vehicle.track.objects[(i == 1 and #vehicle.track.objects or i - 1)];
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
 			
 			local mod = SceneMan.SceneWrapsX and SceneMan.Scene.Width or 1;
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
 				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				--trackObject.Pos = Vector(pos.X%mod, pos.Y);
-				--print("Track Start "..tostring(i).." pos set to "..tostring(trackObject.Pos));
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
 				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				--trackObject.Pos = Vector(pos.X%mod, pos.Y);
-				--print("Track End "..tostring(i).." pos set to "..tostring(trackObject.Pos));
 
 				currentInflectionNumber = currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
 			else
-				trackObject.Pos = (prevTrackObject.Pos + nextTrackObject.Pos) * 0.5;
+				trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
 			end
-			trackObject.Pos.X = SceneMan.SceneWrapsX and trackObject.Pos.X%SceneMan.Scene.Width or trackObject.Pos.X;
 			
 			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - self.RotAngle - vehicle.track.directions[i];
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
@@ -554,6 +549,8 @@ function VehicleFramework.updateTrack(self, vehicle)
 				--print("diffangle is "..tostring(diffAngle)..", angleOffset is "..tostring(angleOffset)..", clampedAngle is "..tostring(clampedAngle).." so rotAngle is "..tostring(trackObject.RotAngle));
 				--print("diffAngle is "..tostring(diffAngle*(180/math.pi))..", vehicle rotAngle is "..tostring(self.RotAngle*(180/math.pi))..", direction is "..tostring(vehicle.track.directions[i]*(180/math.pi)).." min is "..tostring(minAngle*(180/math.pi))..", max is "..tostring(maxAngle*(180/math.pi))..", rotAngle set to "..tostring(trackObject.RotAngle*(180/math.pi)));
 			end
+			trackObject.Vel = self.Vel;
+			trackObject:ClearForces();
 		end
 	end
 end

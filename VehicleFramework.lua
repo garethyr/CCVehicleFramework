@@ -111,6 +111,17 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		
 		VehicleFramework.createTrack(self, vehicle);
 		
+		if (not vehicle.general.forceWheelHorizontalLocking) then
+			for _, wheelObject in ipairs(vehicle.wheel.objects) do
+				for __, tensionerObject in ipairs(vehicle.tensioner.objects) do
+					wheelObject:SetWhichMOToNotHit(tensionerObject, -1);
+				end
+				for __, trackObject in ipairs(vehicle.track.objects) do
+					wheelObject:SetWhichMOToNotHit(trackObject, -1);
+				end
+			end
+		end
+		
 		vehicle.general.fullyCreated = true;
 		return vehicle;
 	end
@@ -147,6 +158,7 @@ function VehicleFramework.createWheels(self, vehicle)
 			vehicle.wheel.objects[i].Team = vehicle.general.team;
 			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
+			vehicle.wheel.objects[i].IgnoresTeamHits = vehicle.general.forceWheelHorizontalLocking;
 			MovableMan:AddParticle(vehicle.wheel.objects[i]);
 		end
 	end
@@ -188,8 +200,6 @@ function VehicleFramework.createTensioners(self, vehicle)
 				vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
-				vehicle.tensioner.objects[i].HitsMOS = false;
-				vehicle.tensioner.objects[i].GetsHitByMOs = false;
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
 				--Everything below here doesn't seem to work, need to figure out a way to make these not hit the wheels
 				--[[
@@ -218,8 +228,6 @@ function VehicleFramework.createTrack(self, vehicle)
 				vehicle.track.objects[i].Vel = Vector();
 				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
 				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
-				vehicle.track.objects[i].HitsMOS = false;
-				vehicle.track.objects[i].GetsHitByMOs = false;
 				vehicle.track.objects[i].IgnoresTeamHits = true;
 				MovableMan:AddParticle(vehicle.track.objects[i]);
 			end

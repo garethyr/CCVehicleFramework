@@ -545,10 +545,6 @@ function VehicleFramework.updateTrack(self, vehicle)
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
 			trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i] + clampedAngle;
 			
-			if (currentInflectionNumber == 1) then
-				--print("diffangle is "..tostring(diffAngle)..", angleOffset is "..tostring(angleOffset)..", clampedAngle is "..tostring(clampedAngle).." so rotAngle is "..tostring(trackObject.RotAngle));
-				--print("diffAngle is "..tostring(diffAngle*(180/math.pi))..", vehicle rotAngle is "..tostring(self.RotAngle*(180/math.pi))..", direction is "..tostring(vehicle.track.directions[i]*(180/math.pi)).." min is "..tostring(minAngle*(180/math.pi))..", max is "..tostring(maxAngle*(180/math.pi))..", rotAngle set to "..tostring(trackObject.RotAngle*(180/math.pi)));
-			end
 			trackObject.Vel = self.Vel;
 			trackObject:ClearForces();
 		end

@@ -226,28 +226,24 @@ end
 function VehicleFramework.setupTrackInflection(vehicle)
 	if (vehicle.track.inflection == nil) then
 		vehicle.track.inflectionStartOffsetDirection = Vector(0, -1);
-		vehicle.track.inflection = {
-			{
-				point = vehicle.tensioner.unrotatedOffsets[1],
-				object = vehicle.tensioner.objects[1],
+		vehicle.track.inflection = {};
+		local inflectionConfig;
+		for i = 1, vehicle.tensioner.count, (vehicle.tensioner.count - 1) do
+			inflectionConfig = {
+				point = vehicle.tensioner.unrotatedOffsets[i],
+				object = vehicle.tensioner.objects[i],
 				objectSize = vehicle.tensioner.size
-			},
-			{
-				point = vehicle.tensioner.unrotatedOffsets[#vehicle.tensioner.unrotatedOffsets],
-				object = vehicle.tensioner.objects[#vehicle.tensioner.objects],
-				objectSize = vehicle.tensioner.size
-			},
-			{
-				point = vehicle.wheel.unrotatedOffsets[#vehicle.wheel.unrotatedOffsets],
-				object = vehicle.wheel.objects[#vehicle.wheel.objects],
-				objectSize = vehicle.wheel.size
-			},
-			{
-				point = vehicle.wheel.unrotatedOffsets[1],
-				object = vehicle.wheel.objects[1],
+			}
+			table.insert(vehicle.track.inflection, inflectionConfig);
+		end
+		for i = vehicle.wheel.count, 1, -(vehicle.wheel.count - 1) do
+			inflectionConfig = {
+				point = vehicle.wheel.unrotatedOffsets[i],
+				object = vehicle.wheel.objects[i],
 				objectSize = vehicle.wheel.size
 			}
-		};
+			table.insert(vehicle.track.inflection, inflectionConfig);
+		end
 	end
 	
 	for i, inflection in ipairs(vehicle.track.inflection) do
@@ -268,10 +264,6 @@ function VehicleFramework.setupTrackInflection(vehicle)
 		inflection.trackDistance = SceneMan:ShortestDistance(inflection.trackStart, inflection.trackEnd, SceneMan.SceneWrapsX);
 		inflection.trackDirection = inflection.trackDistance.AbsRadAngle;
 		inflection.trackDirectionVector = Vector(math.cos(inflection.trackDirection), -math.sin(inflection.trackDirection)).Normalized;
-	end
-	
-	for i, inflection in ipairs(vehicle.track.inflection) do
-		print("Inflection "..tostring(i).." trackDirection is "..tostring(inflection.trackDirection)..", next trackDirection is "..tostring(inflection.next.trackDirection)..", difference is "..tostring(inflection.next.trackDirection - inflection.trackDirection));
 	end
 end
 

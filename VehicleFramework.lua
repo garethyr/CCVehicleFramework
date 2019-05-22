@@ -524,6 +524,7 @@ function VehicleFramework.updateTensioners(self, vehicle)
 			--tensionerObject.AngularVel = vehicle.wheel.objects[1].AngularVel;
 			tensionerObject.RotAngle = vehicle.wheel.objects[1].RotAngle;
 			tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+			tensionerObject.Vel = self.Vel;
 		end
 	end
 end

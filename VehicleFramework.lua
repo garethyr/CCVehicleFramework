@@ -246,7 +246,8 @@ function VehicleFramework.setupTrackInflection(vehicle)
 		for i = 1, vehicle.tensioner.count, iteratorIncrement do
 			inflectionConfig = {
 				point = vehicle.tensioner.unrotatedOffsets[i],
-				object = vehicle.tensioner.objects[i],
+				objectTable = vehicle.tensioner,
+				objectIndex = i,
 				objectSize = vehicle.tensioner.size
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
@@ -256,7 +257,8 @@ function VehicleFramework.setupTrackInflection(vehicle)
 		for i = vehicle.wheel.count, 1, -iteratorIncrement do
 			inflectionConfig = {
 				point = vehicle.wheel.unrotatedOffsets[i],
-				object = vehicle.wheel.objects[i],
+				objectTable = vehicle.wheel,
+				objectIndex = i,
 				objectSize = vehicle.wheel.size
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
@@ -539,11 +541,10 @@ function VehicleFramework.updateTrack(self, vehicle)
 			prevTrackObject = vehicle.track.objects[(i == 1 and #vehicle.track.objects or i - 1)];
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
 			
-			local mod = SceneMan.SceneWrapsX and SceneMan.Scene.Width or 1;
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
-				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
-				trackObject.Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 
 				currentInflectionNumber = currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];

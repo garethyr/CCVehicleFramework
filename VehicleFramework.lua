@@ -287,35 +287,34 @@ function VehicleFramework.setupTrackInflection(vehicle)
 end
 
 function VehicleFramework.calculateTrackOffsets(vehicle)
+	local numberOfTracks, remainderDistance, extraFillerTrack, extraCornerTrack, stretchTreadMultiplier;
+	
 	for i, inflection in ipairs(vehicle.track.inflection) do
-		local numberOfTracks = math.ceil(inflection.trackDistance.Magnitude/vehicle.track.size.X);
+		numberOfTracks = math.ceil(inflection.trackDistance.Magnitude/vehicle.track.size.X);
 		
 		--Add an extra track to fill in space if necessary, i.e. the remainder distance is more than 1/10th of number of tracks (so 5 tracks would become 6 if the remainder distance is > 0.5 track width)
-		local extraFillerTrack = false;
-		do
-			if (numberOfTracks == 1) then
-				numberOfTracks = 2;
+		if (numberOfTracks == 1) then
+			numberOfTracks = 2;
+			remainderDistance = 0;
+			extraFillerTrack = false;
+		else
+			remainderDistance = (inflection.trackDistance.Magnitude%vehicle.track.size.X)/vehicle.track.size.X;
+			extraFillerTrack = remainderDistance > numberOfTracks * 0.06;
+			if (extraFillerTrack == true) then
+				print("Adding extra filler track for inflection "..tostring(i));
 			else
-				local remainderDistance = inflection.trackDistance.Magnitude%vehicle.track.size.X;
-				extraFillerTrack = numberOfTracks * 0.1 <= remainderDistance;
-				if (extraFillerTrack == true) then
-					print("Adding extra filler track for inflection "..tostring(i));
-				else
-					print("NOT Adding extra filler track for inflection "..tostring(i));
-				end
+				print("NOT Adding extra filler track for inflection "..tostring(i));
 			end
 		end
 		numberOfTracks = extraFillerTrack and numberOfTracks + 1 or numberOfTracks;
 		
 		--Add an extra track if the angle difference between this inflection and the next is significant, to support corners
-		local extraCornerTrack = false;
+		extraCornerTrack = false;
 		do
 		end
 		numberOfTracks = extraCornerTrack and numberOfTracks + 1 or numberOfTracks;
 		
-		--How it works:
-		--If remainder dist is >= x% of track size, add another track, otherwise shift everything that's not edges by remainderDistance/numberOfTracks - 3 (2 for ends, 1 for corner)
-		
+		stretchTreadMultiplier = (extraFillerTrack == false and remainderDistance > 0) and remainderDistance/numberOfTracks - (extraCornerTrack and 3 or 2) or 1;
 		
 		for j = 1, numberOfTracks do
 			if (j == 1) then
@@ -327,7 +326,7 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 			--elseif (j == numberOfTracks) then
 			--	table.insert(vehicle.track.unrotatedOffsets, (inflection.trackEnd + inflection.next.trackStart) * 0.5);
 			else
-				table.insert(vehicle.track.unrotatedOffsets, vehicle.track.unrotatedOffsets[#vehicle.track.unrotatedOffsets] + inflection.trackDirectionVector * vehicle.track.size.X);
+				table.insert(vehicle.track.unrotatedOffsets, vehicle.track.unrotatedOffsets[#vehicle.track.unrotatedOffsets] + inflection.trackDirectionVector * vehicle.track.size.X * stretchTreadMultiplier);
 				if (extraFillerTrack and j == numberOfTracks - 1) then
 					table.insert(vehicle.track.extraFillers, #vehicle.track.unrotatedOffsets);
 				end
@@ -544,10 +543,10 @@ function VehicleFramework.updateTrack(self, vehicle)
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
 				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
-				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
-
-				currentInflectionNumber = currentInflectionNumber + 1;
+				currentInflectionNumber = currentInflectionNumber == #vehicle.track.inflection and 1 or currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
+				
+				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			else
 				trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
 			end

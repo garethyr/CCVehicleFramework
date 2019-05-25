@@ -33,7 +33,7 @@ Vehicle configuration is broken into 7 sections, each of which should be a subta
 * destruction  
 	
 The order of these sections doesn't matter, but it may be easiest to organize them in the order above. Sections marked with (\*)s are required and must have some amount of content, sections without can be skipped
-For more information on these sections, see below or look at a sample vehicle.
+For more information on the configuration options in these sections, see the *Vehicle Configuration Documentation*.
 
 The minimum configuration for a vehicle would be as follows:
 

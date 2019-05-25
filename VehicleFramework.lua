@@ -26,6 +26,8 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		-----------------------
 		--Suspension SETTINGS--
 		-----------------------
+		vehicle.suspension.chassisStiffnessModifier = vehicle.suspension.chassisStiffnessModifier or self.Mass/vehicle.wheel.count;
+		vehicle.suspension.wheelStiffnessModifier = vehicle.suspension.wheelStiffnessModifier or "objectMass";
 		vehicle.suspension.springs = {};
 		vehicle.suspension.objects = {};
 		vehicle.suspension.offsets = {main = {}, midPoint = {}};
@@ -171,7 +173,7 @@ function VehicleFramework.createSprings(self, vehicle)
 			length = {vehicle.suspension.length[i].min, vehicle.suspension.length[i].normal, vehicle.suspension.length[i].max},
 			primaryTarget = 1,
 			stiffness = vehicle.suspension.stiffness,
-			stiffnessMultiplier = {self.Mass/vehicle.wheel.count, vehicle.wheel.objects[i].Mass},
+			stiffnessMultiplier = {vehicle.suspension.chassisStiffnessModifier, typeo(vehicle.suspension.wheelStiffnessModifier == "string") and vehicle.wheel.objects[i].Mass or vehicle.suspension.wheelStiffnessModifier},
 			offsets = Vector(vehicle.wheel.objects[i].Pos.X - vehicle.general.pos.X, 0),
 			applyForcesAtOffset = true,
 			lockToSpringRotation = not vehicle.general.forceWheelHorizontalLocking,
@@ -248,6 +250,7 @@ function VehicleFramework.setupTrackInflection(vehicle)
 				point = vehicle.tensioner.unrotatedOffsets[i],
 				objectTable = vehicle.tensioner,
 				objectIndex = i,
+				object = vehicle.tensioner.objects[i],
 				objectSize = vehicle.tensioner.size
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
@@ -259,6 +262,7 @@ function VehicleFramework.setupTrackInflection(vehicle)
 				point = vehicle.wheel.unrotatedOffsets[i],
 				objectTable = vehicle.wheel,
 				objectIndex = i,
+				object = vehicle.wheel.objects[i],
 				objectSize = vehicle.wheel.size
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
@@ -541,12 +545,12 @@ function VehicleFramework.updateTrack(self, vehicle)
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
 			
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
-				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
 				currentInflectionNumber = currentInflectionNumber == #vehicle.track.inflection and 1 or currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
 				
-				trackObject.Pos = currentInflection.objectTable.objects[currentInflection.objectIndex].Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			else
 				trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
 			end

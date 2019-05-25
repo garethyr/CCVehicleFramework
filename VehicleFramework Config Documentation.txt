@@ -1,0 +1,258 @@
+************************************
+------------------------------------
+Vehicle Configuration Documentation:
+------------------------------------
+************************************
+
+The breakdowns below all follow the same structure and explain the following:
+	1. Skippable - Whether or not this configuration option can be skipped. Some options can be Partially skipped, and will contain more information on that
+	2. Supported Types - What lua type or types are allowed for this configuration option
+	3. Purpose - What this configuration option does
+	4. Default - What this configuration option will default to if it is skipped. Not shown for configuration options that can't be skipped
+
+----------------------
+General Configuration:
+----------------------
+maxSpeed:
+	1. Skippable - Partially
+	2. Supported Types - number
+	3. Purpose - This determines what the Vehicle's total velocity is limited to while it's on the ground. As long as it's not falling or otherwise in the air, the Vehicle will never move faster than this.
+	4. Default - If skipped this will match the value of maxThrottle. Note only 1 of the 2 can be skipped
+
+maxThrottle:
+	1. Skippable - Partially
+	2. Supported Types - number
+	3. Purpose - The maximum speed with which wheels are allowed to turn on this vehicle, which in turn determines how fast the vehicle will end up being able to move itself.
+	4. Default - If skipped this will match the value of maxSpeed. Note only 1 of the 2 can be skipped
+
+acceleration:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how quickly the Vehicle accelerates every frame while moving. It also affects how quickly the Vehicle will come to a stop if changing direction.
+	4. Default - maxSpeed/40
+
+deceleration:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how quickly the Vehicle decelerates when not actively moving
+	4. Default - acceleration/20
+
+rotAngleCorrectionRate:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how quickly the Vehicle tilts to line up with its wheels. Effectively the number of radians it will tilt in a frame, high values will make the Vehicle always line up exactly with its wheels.
+	4. Default - 0.02
+
+maxErasableTerrainStrength:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines the maximum strength of terrain the Vehicle's wheels can erase when they're stuck. Setting this to 0 means they'll never erase terrain when stuck, though regardless of this setting the Vehicle is still subject to the game's normal terrain erasing, so it may still erase terrain by driving over it.
+	4. Default - TODO Figure out a good strength to default to
+
+forceWheelHorizontalLocking:
+	1. Skippable - Yes
+	2. Supported Types - boolean
+	3. Purpose - This determines whether the Vehicle's wheels will be forcibly moved into the correct horizontal position, or whether this will be handled in a more natural but less effective way.
+	4. Default - The default for this is determined by whether or not the Vehicle has tensioners and/or tracks. If it does, this will default to true, otherwise it will default to false.
+
+showDebug:
+	1. Skippable - Yes
+	2. Supported Types - boolean
+	3. Purpose - This determines whether or not to show debug information, including information printed to the console, arrows showing forces applied to the vehicle, and other potentially useful information.
+	4. Default - false
+	
+----------------------
+Chassis Configuration:
+----------------------
+size:
+	1. Skippable - No
+	2. Supported Types - Vector
+	3. Purpose - This is used for internal calculations and MUST be set to the dimensions of your Vehicle's chassis sprite.
+
+-------------------------
+Suspension Configuration:
+-------------------------
+defaultLength:
+	1. Skippable - No
+	2. Supported Types - table with keys min, normal, max
+	3. Purpose - This determines how far your wheels will try to be from your chassis. The min and max are the closest and farthest they should be able to get to/from the chassis, and the normal is the desired normal resting distance.
+	4. Default - TODO This could potentially be defaulted to be wheel size, though that would need reordering
+
+lengthOverride:
+	1. Skippable - Yes
+	2. Supported Types - table where the keys are numbers corresponding to wheels/suspensions, and the values are tables with the same structure as defaultLength
+	3. Purpose - This overrides the default suspension length for any wheel numbers passed in, effectively allowing each wheel to be positioned separately
+	4. Default - defaultLength
+
+stiffness:
+	1. Skippable - No
+	2. Supported Types - number
+	3. Purpose - This determines the stiffness of the springs that provide suspension. Overly low values will mean your Vehicle will collapse on itself, and overly high values can cause significant problems and potentially crash the game (due to issues in the game engine). 
+
+chassisStiffnessModifier:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how much the suspension's stiffness is multiplied by for the chassis, often necessary due to the mass difference between the wheels and the chassis.
+	4. Default - mass of the chassis object / number of wheels
+	
+wheelStiffnessModifier:
+	1. Skippable - Yes
+	2. Supported Types - number or string
+	3. Purpose - This determines how much the suspension's stiffness is multiplied by for the wheels, often necessary due to the mass difference between the wheels and the chassis.
+	4. Default - mass of the relevant wheel object
+
+visualsType:
+	1. Skippable - Yes
+	2. Supported Types - VehicleFramework.SuspensionVisualsType.INVISIBLE/SPRITE/DRAWN (or the numbers those enum values represent)
+	3. Purpose - This determines how the Vehicle's suspension is displayed, and what is needed for the visualsConfig. INVISIBLE means there is no display for the suspension, the other options are explained more below
+	4. Default - The default for this is determined by whether or not the Vehicle has tensioners and/or tracks. If it does, this will default to INVISIBLE, otherwise it will default to DRAWN.
+	
+visualsConfig:
+	1. Skippable - Partially
+	2. Supported Types - table with either values to support the suspension visualsType, partially-skippable
+		The table values to match visualsTypes are as follows:
+			SPRITE: objectName and objectRTE describing the PresetName and RTE for the suspension sprite MOSRotatings that will be created
+			DRAWN: width and colourIndex describing how many pixels wide the drawn suspension should be, and what colour from the game's palette it should use to draw suspension
+	3. Purpose - This allows you to provide necessary configuration details for the selected suspension visualsType, and can only be skipped for INVISIBLE or DRAWN visualsTypes.
+	4. Default - If the visualsType is DRAWN the width will default to 1/3rd of the size of the Vehicle's wheels and the colourIndex will default to 247 (a dark grey). It is not used for INVISIBLE visualsType and there is no default value for SPRITE visualsType.
+
+--------------------
+Wheel Configuration:
+--------------------
+spacing:
+	1. Skippable - No
+	2. Supported Types - number
+	3. Purpose - This determines the distance between each wheel.
+	4. Default - TODO maybe default this to wheel size?
+
+count:
+	1. Skippable - No
+	2. Supported Types - number
+	3. Purpose - This determines how many wheels the Vehicle should have.
+	4. Default - TODO maybe make this based on wheel size and spacing vs chassis width?
+
+objectName:
+	1. Skippable - No
+	2. Supported Types - string
+	3. Purpose - This determines what MOSRotating your wheel will be using its PresetName
+	4. Default - TODO maybe support searching for vehicleWheel in self.RTE
+
+objectRTE:
+	1. Skippable - Yes
+	2. Supported Types - string
+	3. Purpose - This determines what RTE to use for your wheel objects
+	4. Default - self.RTE
+
+------------------------------------
+Tensioner Configuration (SKIPPABLE):
+------------------------------------
+displacement:
+	1. Skippable - No
+	2. Supported Types - number or table with inside and outside as keys, and displacement numbers for each grouping as values
+	3. Purpose - This determines how far below the chassis tensioners are
+
+spacing:
+	1. Skippable - No
+	2. Supported Types - number
+	3. Purpose - This determines the distance between each tensioner.
+
+count:
+	1. Skippable - No
+	2. Supported Types - number
+	3. Purpose - This determines the number of tensioners the Vehicle should have.
+	4. Default - TODO maybe make this equal wheen count by default?
+
+objectName:
+	1. Skippable - No
+	2. Supported Types - string
+	3. Purpose - This determines what MOSRotating your tensioner will be using its PresetName
+	4. Default - TODO maybe support searching for vehicleTensionerWheel in self.RTE
+
+objectRTE:
+	1. Skippable - Yes
+	2. Supported Types - string
+	3. Purpose - This determines what RTE to use for your tensioner objects
+	4. Default - self.RTE
+
+--------------------------------
+Track Configuration (SKIPPABLE):
+--------------------------------
+NOTE: This section can be skipped in the config
+
+maxWounds:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how many wounds tracks can take before breaking and causing the Vehicle to be detracked
+	4. Default - TODO figure out a good default. Also make detracking
+
+objectName:
+	1. Skippable - No
+	2. Supported Types - string
+	3. Purpose - This determines what MOSRotating your track will be using its PresetName
+	4. Default - TODO maybe support searching for vehicleTrack in self.RTE
+
+objectRTE:
+	1. Skippable - Yes
+	2. Supported Types - string
+	3. Purpose - This determines what RTE to use for your track objects
+	4. Default - self.RTE
+
+size:
+	1. Skippable - No
+	2. Supported Types - Vector
+	3. Purpose - This is used for internal calculations and MUST be set to the dimensions of your track sprite.
+
+tightness:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how tightly your track will hug the objects it wraps around. Higher values mean tighter tracks. Anything below 0.5 or above 2 will probably be stupid
+	4. Default - 1
+
+maxRotationDeviation:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how much your tracks are able to rotate from their expected rotation, in radians. Because it's radians, anything higher than pi will mean no clamping, and 0 will mean tracks don't wiggle at all.
+	4. Default - 15 degrees in radians
+
+tensionerAnchorType:
+	1. Skippable - Yes
+	2. Supported Types - VehicleFramework.TrackAnchorType.ALL/FIRST_AND_LAST (or the numbers those enum values represent)
+	3. Purpose - This determines which tensioners the track will be anchored to, so tracks next to those tensioners will behave as if attached to them. ALL means all tensioners and FIRST_AND_LAST means the first and last tensioners.
+	4. Default - TrackAnchorType.FIRST_AND_LAST
+
+wheelAnchorType:
+	1. Skippable - Yes
+	2. Supported Types - VehicleFramework.TrackAnchorType.ALL/FIRST_AND_LAST (or the numbers those enum values represent)
+	3. Purpose - This determines which wheels the track will be anchored to, so tracks next to those wheels will behave as if attached to them. ALL means all wheels and FIRST_AND_LAST means the first and last wheels.
+	4. Default - TrackAnchorType.FIRST_AND_LAST
+
+********************
+Custom Track Designs:
+Everything below is here for advanced users only, and not recommended unless you want to do a lot of work! It should be ignored unless you want to make your own Track, in which case every part of it is necessary.
+
+inflectionStartOffsetDirection:
+	1. Skippable - No
+	2. Supported Types - Vector
+	3. Purpose - This determines where the first track starts around its first inflection point, and should be a normalized Vector (i.e. a Vector with a magnitude of 1). For example, Vector(0, -1) would mean your first track would be placed above the inflection object.
+
+inflection:
+	1. Skippable - No
+	2. Supported Types - A table of inflectionConfigs, the structure of which will be mentioned below
+	3. Purpose - This allows you to define your own tread path, so you can make it completely custom in shape and function.
+	
+	Below is the structure of an inflectionConfig, multiple of which make up a track. Your track will start from the first config in the table and keep going through them til the end, whereupon it connects back to the first config to form a loop.
+	inflectionConfig = {
+		object = The anchor object for this inflection point, to which the first track for it is attached.
+		point = The offset of this object from self, not accounting for rotation. So for a Vehicle with a single wheel with normal length 15, this would be Vector(0, 15).
+		objectSize = The diameter of the object. The track inflection system is not currently set up to support objects with different heights and lengths, and this may require tweaking to work even remotely well with them.
+	}
+********************
+
+--------------------------------------
+Destruction Configuration (SKIPPABLE):
+--------------------------------------
+overturnedLimit:
+	1. Skippable - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how many seconds the Vehicle can be upside down for before detonating
+	4. Default - 10

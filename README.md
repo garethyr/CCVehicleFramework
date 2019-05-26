@@ -7,7 +7,7 @@ If you have any questions, you can contact me here or find me on the Cortex Comm
 
 1. Download the VehicleFramework.lua file and place it in your rte
 
-2. Create your sprites and ini for your vehicle. Look at the examples to walk through them. IMPORTANT: Make sure your sprites have no extra space around them, the objects should reach the edge of the sprite background where possible.
+2. Create your sprites and ini for your vehicle. Look at the examples to walk through them. IMPORTANT: Make sure your sprites have offset (0, 0) and have no extra space around them, i.e. the objects should reach the edge of the sprite background where possible.
 
 3. Load the VehicleFramework into the game so you can use it. This is done with 2 steps:  
 	i. Add your rte to the lua package path. This is done by adding the following line to the top of your script (outside of any functions like Create):  
@@ -27,7 +27,7 @@ NOTE: You can potentially skip step 3 and just do everything in your Update func
 
 Vehicle configuration is broken into 7 sections, each of which should be a subtable in the main vehicleConfig table. These sections are as follows:  
 * general (\*)  
-* chassis (\*)  
+* chassis - note that currently there are no configuration options for the chassis  
 * suspension (\*)  
 * wheel (\*)  
 * tensioner  
@@ -43,13 +43,28 @@ The minimum configuration for a vehicle would be as follows:
 		general = {
 			maxSpeed = number
 		},
-		chassis = {
-			size = Vector
-		},
 		suspension = {
 			stiffness = number
 		},
 		wheel = {
 			count = number
 		}
+	}
+
+To make a tracked vehicle, it would be as follows:
+
+	vehicleConfig = {
+		general = {
+			maxSpeed = number
+		},
+		suspension = {
+			stiffness = number
+		},
+		wheel = {
+			count = number
+		},
+		tensioner = {
+			displacement = number
+		},
+		track = true
 	}

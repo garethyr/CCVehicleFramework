@@ -16,7 +16,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.suspension = vehicle.suspension or {};
 	vehicle.wheel = vehicle.wheel or {};
 	vehicle.tensioner = vehicle.tensioner or nil;
-	vehicle.track = vehicle.track or nil;
+	vehicle.track = vehicle.track == true and {} or vehicle.track;
 	vehicle.destruction = vehicle.destruction or {};
 	
 	vehicle.general.fullyCreated = vehicle.general.fullyCreated or 0;

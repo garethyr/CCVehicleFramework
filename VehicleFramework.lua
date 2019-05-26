@@ -3,17 +3,33 @@ require("SpringFramework/SpringFramework");
 VehicleFramework = {};
 
 --Enums and Constants
+VehicleFramework.AUTO_GENERATE = "autoGenerate";
 VehicleFramework.SuspensionVisualsType = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
 VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2}
 
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
 	
-	--------------------
-	--GENERAL SETTINGS--
-	--------------------
+	--Initialize necessary configs if they don't exist
+	vehicle.general = vehicle.general or {};
+	vehicle.chassis = vehicle.chassis or {};
+	vehicle.suspension = vehicle.suspension or {};
+	vehicle.wheel = vehicle.wheel or {};
+	vehicle.tensioner = vehicle.tensioner or nil;
+	vehicle.track = vehicle.track or nil;
+	vehicle.destruction = vehicle.destruction or {};
+	
 	vehicle.general.fullyCreated = vehicle.general.fullyCreated or 0;
 	if (vehicle.general.fullyCreated == 0) then
+		--------------------
+		--GENERAL SETTINGS--
+		--------------------
+		vehicle.general.RTE = string.sub(self:GetModuleAndPresetName(), 1, string.find(self:GetModuleAndPresetName(), "/") - 1);
+		
+		vehicle = VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
+		
+		vehicle = VehicleFramework.ensureVehicleConfigIsValid(vehicle);
+		
 		vehicle.general.team = self.Team;
 		vehicle.general.pos = self.Pos;
 		vehicle.general.vel = self.Vel;
@@ -23,11 +39,15 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		vehicle.general.isDriving = false;
 		vehicle.general.isStronglyDecelerating = false;
 		
+		
+		--------------------
+		--CHASSIS SETTINGS--
+		--------------------
+		vehicle.chassis.size = self.SpriteOffset * -2;
+		
 		-----------------------
 		--Suspension SETTINGS--
 		-----------------------
-		vehicle.suspension.chassisStiffnessModifier = vehicle.suspension.chassisStiffnessModifier or self.Mass/vehicle.wheel.count;
-		vehicle.suspension.wheelStiffnessModifier = vehicle.suspension.wheelStiffnessModifier or "objectMass";
 		vehicle.suspension.springs = {};
 		vehicle.suspension.objects = {};
 		vehicle.suspension.offsets = {main = {}, midPoint = {}};
@@ -35,24 +55,35 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		vehicle.suspension.longest = {max = 0};
 		
 		for i = 1, vehicle.wheel.count do
-			if (vehicle.suspension.defaultLength) then
+			if (vehicle.suspension.defaultLength ~= VehicleFramework.AUTO_GENERATE) then
 				vehicle.suspension.length[i] = {min = vehicle.suspension.defaultLength.min, normal = vehicle.suspension.defaultLength.normal, max = vehicle.suspension.defaultLength.max};
+			else
+				vehicle.suspension.length[i] = VehicleFramework.AUTO_GENERATE;
 			end
 			if (vehicle.suspension.lengthOverride ~= nil and vehicle.suspension.lengthOverride[i] ~= nil) then
 				vehicle.suspension.length[i] = {min = vehicle.suspension.lengthOverride[i].min, normal = vehicle.suspension.lengthOverride[i].normal, max = vehicle.suspension.lengthOverride[i].max};
 			end
-			vehicle.suspension.length[i].difference = vehicle.suspension.length[i].max - vehicle.suspension.length[i].min;
-			vehicle.suspension.length[i].mid = vehicle.suspension.length[i].min + vehicle.suspension.length[i].difference * 0.5;
-			vehicle.suspension.length[i].normal = vehicle.suspension.length[i].normal or vehicle.suspension.length[i].mid; --Default to mid if we have no normal
-			vehicle.suspension.longest = vehicle.suspension.length[i].max > vehicle.suspension.longest.max and vehicle.suspension.length[i] or vehicle.suspension.longest;
+			if (vehicle.suspension.length[i] ~= VehicleFramework.AUTO_GENERATE) then
+				vehicle.suspension.length[i].difference = vehicle.suspension.length[i].max - vehicle.suspension.length[i].min;
+				vehicle.suspension.length[i].mid = vehicle.suspension.length[i].min + vehicle.suspension.length[i].difference * 0.5;
+				vehicle.suspension.length[i].normal = vehicle.suspension.length[i].normal or vehicle.suspension.length[i].mid;
+			end
 		end
 		vehicle.suspension.defaultLength = nil; vehicle.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
+		
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+			vehicle.suspension.visualsConfig.widths = {};
+			for i = 1, vehicle.wheel.count do
+				vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.width;
+			end
+			vehicle.suspension.visualsConfig.width = nil; --Clean this up so we don't use it accidentally in future
+		end
 		
 		------------------
 		--WHEEL SETTINGS--
 		------------------
 		vehicle.wheel.objects = {};
-		vehicle.wheel.size = 0; --This gets filled in by the createWheels function cause it uses the wheel object's diameter
+		vehicle.wheel.size = {};
 		vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
 		vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
 		vehicle.wheel.isInAir = {};
@@ -64,7 +95,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 			vehicle.tensioner.objects = {};
 			vehicle.tensioner.unrotatedOffsets = {};
 			vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
-			vehicle.tensioner.size = 0; --This gets filled in by the createWheels function cause it uses the tensioner object's diameter
+			vehicle.tensioner.size = {};
 			vehicle.tensioner.evenTensionerCount = vehicle.tensioner.count % 2 == 0;
 			vehicle.tensioner.midTensioner = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.count * 0.5 or math.ceil(vehicle.tensioner.count * 0.5);
 		end
@@ -80,10 +111,6 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 			vehicle.track.extraFillers = {};
 			vehicle.track.directions = {};
 			vehicle.track.objects = {};
-			if (vehicle.track.inflection == nil) then
-				vehicle.track.tensionerAnchorType = vehicle.track.tensionerAnchorType or VehicleFramework.TrackAnchorType.ALL;
-				vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.ALL;
-			end
 		end
 		
 		------------------------
@@ -107,19 +134,31 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		
 		VehicleFramework.createWheels(self, vehicle);
 		
+		--Handle AUTO_GENERATE for vehicle.suspension.visualsConfig.widths
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+			for i = 1, vehicle.wheel.count do
+				vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.widths[i] == VehicleFramework.AUTO_GENERATE and vehicle.wheel.size[i]/3 or vehicle.suspension.visualsConfig.widths[i];
+			end
+		end
+		
 		VehicleFramework.createSprings(self, vehicle);
 		
 		VehicleFramework.createTensioners(self, vehicle);
 		
 		VehicleFramework.createTrack(self, vehicle);
 		
+		--TODO This does nothing!
 		if (not vehicle.general.forceWheelHorizontalLocking) then
 			for _, wheelObject in ipairs(vehicle.wheel.objects) do
-				for __, tensionerObject in ipairs(vehicle.tensioner.objects) do
-					wheelObject:SetWhichMOToNotHit(tensionerObject, -1);
+				if (vehicle.tensioner ~= nil) then
+					for __, tensionerObject in ipairs(vehicle.tensioner.objects) do
+						wheelObject:SetWhichMOToNotHit(tensionerObject, -1);
+					end
 				end
-				for __, trackObject in ipairs(vehicle.track.objects) do
-					wheelObject:SetWhichMOToNotHit(trackObject, -1);
+				if (vehicle.track ~= nil) then
+					for __, trackObject in ipairs(vehicle.track.objects) do
+						wheelObject:SetWhichMOToNotHit(trackObject, -1);
+					end
 				end
 			end
 		end
@@ -129,10 +168,241 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	end
 end
 
+function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
+	--General
+	vehicle.general.maxSpeed = vehicle.general.maxSpeed or vehicle.general.maxThrottle;
+	assert(vehicle.general.maxSpeed, "Only one of vehicle.general.maxSpeed vehicle.general.maxThrottle can be nil. Please check the Vehicle Configuration Documentation.");
+	vehicle.general.maxSpeed = Clamp(vehicle.general.maxSpeed, 0, 1000000000);
+	
+	vehicle.general.maxThrottle = vehicle.general.maxThrottle or vehicle.general.maxSpeed;
+	vehicle.general.maxThrottle = Clamp(vehicle.general.maxThrottle, 0, 1000000000);
+	
+	vehicle.general.acceleration = vehicle.general.acceleration or vehicle.general.maxThrottle/40;
+	vehicle.general.acceleration = Clamp(vehicle.general.acceleration, 0, vehicle.general.maxThrottle);
+	
+	vehicle.general.deceleration = vehicle.general.deceleration or vehicle.general.acceleration/20;
+	vehicle.general.deceleration = Clamp(vehicle.general.deceleration, 0, vehicle.general.maxThrottle);
+	
+	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.02;
+	vehicle.general.rotAngleCorrectionRate = Clamp(vehicle.general.rotAngleCorrectionRate, 0, 2*math.pi);
+	
+	vehicle.general.maxErasableTerrainStrength = vehicle.general.maxErasableTerrainStrength or 100;
+	vehicle.general.maxErasableTerrainStrength = Clamp(vehicle.general.maxErasableTerrainStrength, 0, 1000000000);
+	
+	if (vehicle.general.forceWheelHorizontalLocking == nil) then
+		vehicle.general.forceWheelHorizontalLocking = (vehicle.track ~= nil or vehicle.tensioner ~= nil) and true or false;
+	end
+	
+	vehicle.general.showDebug = vehicle.general.showDebug == true and true or false;
+	
+	--Chassis
+	--Nothing here
+	
+	--Suspension
+	vehicle.suspension.defaultLength = vehicle.suspension.defaultLength or VehicleFramework.AUTO_GENERATE;
+	
+	--vehicle.suspension.lengthOverride is handled separately elsewhere
+	
+	vehicle.suspension.stiffness = Clamp(vehicle.suspension.stiffness, 0, 1000000000);
+	
+	vehicle.suspension.chassisStiffnessModifier = vehicle.suspension.chassisStiffnessModifier or VehicleFramework.AUTO_GENERATE;
+	if (type(vehicle.suspension.chassisStiffnessModifier) == number) then
+		vehicle.suspension.chassisStiffnessModifier = Clamp(vehicle.suspension.chassisStiffnessModifier, 1, 1000000000);
+	end
+
+	vehicle.suspension.wheelStiffnessModifier = vehicle.suspension.wheelStiffnessModifier or VehicleFramework.AUTO_GENERATE;
+	if (type(vehicle.suspension.wheelStiffnessModifier) == number) then
+		vehicle.suspension.wheelStiffnessModifier = Clamp(vehicle.suspension.wheelStiffnessModifier, 1, 1000000000);
+	end
+	
+	vehicle.suspension.visualsType = vehicle.suspension.visualsType or (vehicle.track ~= nil or vehicle.tensioner ~= nil) and VehicleFramework.SuspensionVisualsType.INVISIBLE or VehicleFramework.SuspensionVisualsType.DRAWN;
+	
+	vehicle.suspension.visualsConfig = vehicle.suspension.visualsConfig or {};
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.INVISIBLE) then
+		vehicle.suspension.visualsConfig = nil;
+	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+		vehicle.suspension.visualsConfig.objectName = vehicle.suspension.visualsConfig.objectName or self.PresetName.." Suspension";
+		
+		vehicle.suspension.visualsConfig.objectRTE = vehicle.suspension.visualsConfig.objectRTE or vehicle.general.RTE;
+	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+		vehicle.suspension.visualsConfig.width = vehicle.suspension.visualsConfig.width or VehicleFramework.AUTO_GENERATE;
+		if (type(vehicle.suspension.visualsConfig.width) == number) then
+			vehicle.suspension.visualsConfig.width = Clamp(vehicle.suspension.visualsConfig.width, 1, 1000000000);
+		end
+		
+		vehicle.suspension.visualsConfig.colourIndex = vehicle.suspension.visualsConfig.colourIndex or 247;
+		vehicle.suspension.visualsConfig.colourIndex = Clamp(vehicle.suspension.visualsConfig.colourIndex, 0, 255);
+	end
+	
+	--Wheel
+	vehicle.wheel.spacing = vehicle.wheel.spacing or VehicleFramework.AUTO_GENERATE;
+	if (type(vehicle.wheel.spacing) == "number") then
+		vehicle.wheel.spacing = Clamp(vehicle.wheel.spacing, 0, 1000000000);
+	end
+	
+	assert(vehicle.wheel.count ~= nil, "You must specify the number of wheels for your Vehicle. Please check the Vehicle Configuration Documentation.")
+	
+	vehicle.wheel.objectName = vehicle.wheel.objectName or self.PresetName.." Wheel";
+	
+	vehicle.wheel.objectRTE = vehicle.wheel.objectRTE or vehicle.general.RTE;
+	
+	--Tensioner
+	if (vehicle.tensioner ~= nil) then
+		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
+		if (type(vehicle.tensioner.spacing) == "number") then
+			vehicle.tensioner.spacing = Clamp(vehicle.tensioner.spacing, 0, 1000000000);
+		end
+		
+		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
+		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
+	
+		assert(vehicle.tensioner.displacement, "You must specify a displacement for your tensioners. Please check the Vehicle Configuration Documentation.");
+		if (type(vehicle.tensioner.displacement) == "number") then
+			local displacement = vehicle.tensioner.displacement;
+			vehicle.tensioner.displacement = {};
+			
+			for i = 1, vehicle.tensioner.count do
+				vehicle.tensioner.displacement[i] = displacement;
+			end
+		elseif (type(vehicle.tensioner.displacement) == "table") then
+			if (vehicle.tensioner.displacement.inside ~= nil and vehicle.tensioner.displacement.outside ~= nil) then
+				for i = 1, vehicle.tensioner.count do
+					if (i == 1 or i == vehicle.tensioner.count) then
+						vehicle.tensioner.displacement[i] = vehicle.tensioner.displacement.outside;
+					else
+						vehicle.tensioner.displacement[i] = vehicle.tensioner.displacement.inside;
+					end
+				end
+				vehicle.tensioner.displacement.inside = nil;
+				vehicle.tensioner.displacement.outside = nil;
+			elseif (vehicle.tensioner.displacement[1] ~= nil) then
+				for i = 1, vehicle.tensioner.count do
+					assert(type(vehicle.tensioner.displacement[i]) == "number", "You have specified displacements for individual tensioners but are missing a number for tensioner "..tostring(i)..". Please check the Vehicle Configuration Documentation.");
+				end
+			else
+				error("You have used a table for your tensioner displacements, but have not populated it properly. Please check the Vehicle Configuration Documentation.");
+			end
+		end
+		
+		vehicle.tensioner.objectName = vehicle.tensioner.objectName or self.PresetName.." Tensioner";
+		
+		vehicle.tensioner.objectRTE = vehicle.tensioner.objectRTE or vehicle.general.RTE;
+	end
+	
+	--Track
+	if (vehicle.track ~= nil) then
+		--vehicle.track.size is handled elsewhere
+		
+		vehicle.track.tightness = vehicle.track.tightness or 1;
+		vehicle.track.tightness = Clamp(vehicle.track.tightness, 0.000001, 1000000000);
+		
+		vehicle.track.maxRotationDeviation = vehicle.track.maxRotationDeviation or (15 * math.pi)/180;
+		vehicle.track.maxRotationDeviation = Clamp(vehicle.track.maxRotationDeviation, 0, math.pi * 2);
+	
+		vehicle.track.maxWounds = vehicle.track.maxWounds or 50;
+		vehicle.track.maxWounds = Clamp(vehicle.track.maxWounds, 0, 1000000000);
+		
+		vehicle.track.tensionerAnchorType = vehicle.track.tensionerAnchorType or VehicleFramework.TrackAnchorType.FIRST_AND_LAST;
+		
+		vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.FIRST_AND_LAST;
+		
+		vehicle.track.objectName = vehicle.track.objectName or self.PresetName.." Track";
+		
+		vehicle.track.objectRTE = vehicle.track.objectRTE or vehicle.general.RTE;
+		
+		vehicle.track.inflectionStartOffsetDirection = vehicle.track.inflectionStartOffsetDirection or Vector(0, -1);
+	end
+	
+	--Destruction
+	vehicle.destruction.overturnedLimit = vehicle.destruction.overturnedLimit or 10;
+	vehicle.destruction.overturnedLimit = Clamp(vehicle.destruction.overturnedLimit, 1, 1000000000);
+	
+	return vehicle;
+end
+
+function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
+	local ignoredKeys = {
+		general = {fullyCreated = true, RTE = true}
+	};
+	local supportedTypes = {
+		general = {
+			maxSpeed = "number",
+			maxThrottle = "number",
+			acceleration = "number",
+			deceleration = "number",
+			rotAngleCorrectionRate = "number",
+			maxErasableTerrainStrength = "number",
+			forceWheelHorizontalLocking = "boolean",
+			showDebug = "boolean"
+		},
+		chassis = {
+		},
+		suspension = {
+			defaultLength = {"table", "string"},
+			lengthOverride = {"table", "nil"},
+			stiffness = "number",
+			chassisStiffnessModifier = {"number", "string"},
+			wheelStiffnessModifier = {"number", "string"},
+			visualsType = "number",
+			visualsConfig = {"table", "nil"}
+		},
+		wheel = {
+			spacing = {"number", "string"},
+			count = "number",
+			objectName = "string",
+			objectRTE = "string"
+		},
+		tensioner = {
+			displacement = {"number", "table"},
+			spacing = {"number", "string"},
+			count = "number",
+			objectName = "string",
+			objectRTE = "string"
+		},
+		track = {
+			maxWounds = "number",
+			objectName = "string",
+			objectRTE = "string",
+			tightness = "number",
+			maxRotationDeviation = "number",
+			tensionerAnchorType = "number",
+			wheelAnchorType = "number",
+			inflectionStartOffsetDirection = {"userdata", "nil"},
+			inflection = {"table", "nil"}
+		},
+		destruction = {
+			overturnedLimit = "number"
+		},
+	}
+	--Ensure everything is a real configuration option and has the correct type
+	for categoryKey, categoryTable in pairs(vehicle) do
+		for optionKey, optionValue in pairs(categoryTable) do
+			if (ignoredKeys[categoryKey] == nil or ignoredKeys[categoryKey][optionKey] ~= true) then
+				assert(supportedTypes[categoryKey], "vehicle."..tostring(categoryKey).." is an invalid configuration option category. Please check the Vehicle Configuration Documentation.");
+				assert(supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." is an invalid configuration option. Please check the Vehicle Configuration Documentation.");
+				if (type(supportedTypes[categoryKey][optionKey]) == "string") then
+					assert(type(optionValue) == supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be a "..tostring(supportedTypes[categoryKey][optionKey])..". Please check the Vehicle Configuration Documentation.");
+				elseif (type(supportedTypes[categoryKey][optionKey]) == "table") then
+					local typeIsSupported = false;
+					for _, supportedType in pairs(supportedTypes[categoryKey][optionKey]) do
+						if (type(optionValue) == supportedType) then
+							typeIsSupported = true;
+							break;
+						end
+					end
+					assert(typeIsSupported, "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be one of the following: "..tostring(table.concat(supportedTypes[categoryKey][optionKey], ", "))..". Please check the Vehicle Configuration Documentation.");
+				end
+			end
+		end
+	end
+	
+	return vehicle;
+end
+
 function VehicleFramework.createSuspensionSprites(vehicle)
 	for i = 1, vehicle.suspension.count do
 		if not MovableMan:ValidMO(vehicle.suspension.objects[i]) then
-			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
+			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
 			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
 			vehicle.suspension.objects[i].Team = vehicle.general.team;
 			MovableMan:AddParticle(vehicle.suspension.objects[i]);
@@ -141,6 +411,16 @@ function VehicleFramework.createSuspensionSprites(vehicle)
 end
 
 function VehicleFramework.createWheels(self, vehicle)
+	local calculateAutoGeneratedSuspensionLength = function(wheelSize)
+		local length = {min = wheelSize * 0.5, normal = wheelSize, max = wheelSize * 1.5};
+		
+		length.difference = length.max - length.min;
+		length.mid = length.min + length.difference * 0.5;
+		length.normal = length.normal or length.mid;
+		
+		return length;
+	end
+
 	local calculateWheelOffsetAndPosition = function(rotAngle, vehicle, wheelNumber)
 		local xOffset;
 		if (wheelNumber == vehicle.wheel.midWheel) then
@@ -157,23 +437,46 @@ function VehicleFramework.createWheels(self, vehicle)
 	for i = 1, vehicle.wheel.count do
 		if not MovableMan:ValidMO(vehicle.wheel.objects[i]) then
 			vehicle.wheel.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
+			vehicle.wheel.size[i] = vehicle.wheel.objects[i].Diameter/math.sqrt(2);
+			
+			--Handle AUTO_GENERATE for vehicle.suspension.length
+			if (vehicle.suspension.length[i] == VehicleFramework.AUTO_GENERATE) then
+				vehicle.suspension.length[i] = calculateAutoGeneratedSuspensionLength(vehicle.wheel.size[i]);
+			end
+			
+			--Handle AUTO_GENERATE for vehicle.wheel.spacing
+			if (i == 1 and vehicle.wheel.spacing == VehicleFramework.AUTO_GENERATE) then
+				vehicle.wheel.spacing = vehicle.wheel.size[i] * 1.1;
+			end
+			
 			vehicle.wheel.objects[i].Team = vehicle.general.team;
 			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
 			vehicle.wheel.objects[i].IgnoresTeamHits = vehicle.general.forceWheelHorizontalLocking;
 			MovableMan:AddParticle(vehicle.wheel.objects[i]);
 		end
+		
+		vehicle.suspension.longest = vehicle.suspension.length[i].max > vehicle.suspension.longest.max and vehicle.suspension.length[i] or vehicle.suspension.longest;
 	end
-	vehicle.wheel.size = vehicle.wheel.objects[1].Diameter/math.sqrt(2);
 end
 
 function VehicleFramework.createSprings(self, vehicle)
-	for i, wheelObject in ipairs(vehicle.wheel.objects) do			
+	--Handle AUTO_GENERATE for vehicle.suspension.chassisStiffnessModifier
+	if (vehicle.suspension.chassisStiffnessModifier == VehicleFramework.AUTO_GENERATE) then
+		vehicle.suspension.chassisStiffnessModifier = self.Mass/vehicle.wheel.count;
+	end
+	
+	for i, wheelObject in ipairs(vehicle.wheel.objects) do
+		--Handle AUTO_GENERATE for vehicle.suspension.wheelStiffnessModifier
+		if (vehicle.suspension.wheelStiffnessModifier == VehicleFramework.AUTO_GENERATE) then
+			vehicle.suspension.wheelStiffnessModifier = wheelObject.Mass;
+		end
+		
 		local springConfig = {
 			length = {vehicle.suspension.length[i].min, vehicle.suspension.length[i].normal, vehicle.suspension.length[i].max},
 			primaryTarget = 1,
 			stiffness = vehicle.suspension.stiffness,
-			stiffnessMultiplier = {vehicle.suspension.chassisStiffnessModifier, typeo(vehicle.suspension.wheelStiffnessModifier == "string") and vehicle.wheel.objects[i].Mass or vehicle.suspension.wheelStiffnessModifier},
+			stiffnessMultiplier = {vehicle.suspension.chassisStiffnessModifier, vehicle.suspension.wheelStiffnessModifier},
 			offsets = Vector(vehicle.wheel.objects[i].Pos.X - vehicle.general.pos.X, 0),
 			applyForcesAtOffset = true,
 			lockToSpringRotation = not vehicle.general.forceWheelHorizontalLocking,
@@ -192,14 +495,21 @@ function VehicleFramework.createTensioners(self, vehicle)
 		local xOffset;
 		for i = 1, vehicle.tensioner.count do
 			if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
+				vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
+				vehicle.tensioner.size[i] = vehicle.tensioner.objects[i].Diameter/math.sqrt(2);
+	
+				--Handle AUTO_GENERATE for vehicle.tensioner.spacing
+				if (vehicle.tensioner.spacing == VehicleFramework.AUTO_GENERATE) then
+					vehicle.tensioner.spacing = vehicle.wheel.spacing;
+				end
+				
 				if (i == vehicle.tensioner.midTensioner) then
 					xOffset = vehicle.tensioner.evenTensionerCount and -vehicle.tensioner.spacing * 0.5 or 0;
 				else
 					xOffset = vehicle.tensioner.spacing * (i - vehicle.tensioner.midTensioner) + (vehicle.tensioner.evenTensionerCount and -vehicle.tensioner.spacing * 0.5 or 0);
 				end
-				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[((i == 1 or i == vehicle.tensioner.count) and "outside" or "inside")]);
+				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[i]);
 				
-				vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
@@ -213,13 +523,17 @@ function VehicleFramework.createTensioners(self, vehicle)
 				MovableMan:AddParticle(vehicle.tensioner.objects[i]);
 			end
 		end
-		vehicle.tensioner.size = vehicle.tensioner.objects[1].Diameter/math.sqrt(2);
 		VehicleFramework.updateTensioners(self, vehicle);
 	end
 end
 
 function VehicleFramework.createTrack(self, vehicle)
 	if (vehicle.track ~= nil and vehicle.tensioner ~= nil) then
+		local trackSizer = CreateMOSRotating(vehicle.track.objectName);
+		vehicle.track.size = trackSizer.SpriteOffset * -2;
+		trackSizer.ToDelete = true;
+		trackSizer = nil;
+	
 		VehicleFramework.setupTrackInflection(vehicle);
 		VehicleFramework.calculateTrackOffsets(vehicle);
 		
@@ -239,8 +553,6 @@ end
 
 function VehicleFramework.setupTrackInflection(vehicle)
 	if (vehicle.track.inflection == nil) then
-		vehicle.track.inflectionStartOffsetDirection = Vector(0, -1);
-		
 		vehicle.track.inflection = {};
 		local inflectionConfig, iteratorIncrement;
 		
@@ -251,7 +563,7 @@ function VehicleFramework.setupTrackInflection(vehicle)
 				objectTable = vehicle.tensioner,
 				objectIndex = i,
 				object = vehicle.tensioner.objects[i],
-				objectSize = vehicle.tensioner.size
+				objectSize = vehicle.tensioner.size[i]
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
 		end
@@ -263,7 +575,7 @@ function VehicleFramework.setupTrackInflection(vehicle)
 				objectTable = vehicle.wheel,
 				objectIndex = i,
 				object = vehicle.wheel.objects[i],
-				objectSize = vehicle.wheel.size
+				objectSize = vehicle.wheel.size[i]
 			}
 			table.insert(vehicle.track.inflection, inflectionConfig);
 		end
@@ -349,7 +661,7 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 end
 
 function VehicleFramework.destroyVehicle(vehicle)
-	if (vehicle ~= nil) then
+	if (vehicle) then
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 			for _, suspensionObject in ipairs(vehicle.suspension.objects) do
 				if MovableMan:ValidMO(suspensionObject) then
@@ -380,28 +692,37 @@ function VehicleFramework.destroyVehicle(vehicle)
 end
 
 function VehicleFramework.updateVehicle(self, vehicle)
-	if (vehicle.general.fullyCreated ~= true) then
-		return VehicleFramework.createVehicle(self, vehicle);
+	if (vehicle == nil) then
+		print("******************************************************************************************************");
+		print("Your vehicle has been incorrectly configured and cannot run. Please check the Vehicle Configuration Documentation.");
+		print("******************************************************************************************************");
+		vehicle = false;
 	end
-
-	local destroyed = VehicleFramework.updateDestruction(self, vehicle);
 	
-	if (not destroyed) then
-		VehicleFramework.updateAltitudeChecks(vehicle);
+	if (vehicle) then
+		if (vehicle.general.fullyCreated ~= true) then
+			return VehicleFramework.createVehicle(self, vehicle);
+		end
+
+		local destroyed = VehicleFramework.updateDestruction(self, vehicle);
 		
-		VehicleFramework.updateThrottle(vehicle);
-		
-		VehicleFramework.updateWheels(vehicle);
-		
-		VehicleFramework.updateSprings(vehicle);
-		
-		VehicleFramework.updateTensioners(self, vehicle);
-		
-		VehicleFramework.updateTrack(self, vehicle);
-		
-		VehicleFramework.updateChassis(self, vehicle);
-		
-		VehicleFramework.updateSuspension(self, vehicle);
+		if (not destroyed) then
+			VehicleFramework.updateAltitudeChecks(vehicle);
+			
+			VehicleFramework.updateThrottle(vehicle);
+			
+			VehicleFramework.updateWheels(vehicle);
+			
+			VehicleFramework.updateSprings(vehicle);
+			
+			VehicleFramework.updateTensioners(self, vehicle);
+			
+			VehicleFramework.updateTrack(self, vehicle);
+			
+			VehicleFramework.updateChassis(self, vehicle);
+			
+			VehicleFramework.updateSuspension(self, vehicle);
+		end
 	end
 	
 	return vehicle;
@@ -437,10 +758,10 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 	local inAirWheelCount = 0;
 	vehicle.wheel.isInAir = {};
 	for i, wheelObject in ipairs(vehicle.wheel.objects) do
-		local wheelAltitude = wheelObject:GetAltitude(0, vehicle.wheel.size);
+		local wheelAltitude = wheelObject:GetAltitude(0, vehicle.wheel.size[i]);
 		vehicle.wheel.isInAir[i] = false;
 		
-		if (wheelAltitude > vehicle.wheel.size * 2) then
+		if (wheelAltitude > vehicle.wheel.size[i] * 2) then
 			vehicle.wheel.isInAir[i] = true;
 			inAirWheelCount = inAirWheelCount + 1;
 		end
@@ -509,10 +830,10 @@ function VehicleFramework.updateSprings(vehicle)
 					--Check terrain strength at the wheel's position and its 4 center edges
 					local erasableTerrain = {
 						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X - vehicle.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X + vehicle.wheel.size * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y - vehicle.wheel.size * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + vehicle.wheel.size * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X - vehicle.wheel.size[i] * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X + vehicle.wheel.size[i] * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y - vehicle.wheel.size[i] * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
+						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + vehicle.wheel.size[i] * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil
 					};
 					if (#erasableTerrain > 3) then
 						wheelObject:EraseFromTerrain();
@@ -620,9 +941,9 @@ end
 function VehicleFramework.updateSuspension(self, vehicle)
 	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
 		for i, spring in ipairs(vehicle.suspension.springs) do
-			vehicle.suspension.offsets.main[i] = spring.targetPos[1] + Vector(0, vehicle.chassis.size.Y * 0.5):RadRotate(self.RotAngle);
+			vehicle.suspension.offsets.main[i] = spring.targetPos[1];
 			if (i ~= vehicle.wheel.count) then
-				vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] - Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
+				vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] + Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
 			end
 		end
 
@@ -636,12 +957,12 @@ end
 
 function VehicleFramework.updateDrawnSuspension(self, vehicle)
 	for i, wheelObject in ipairs(vehicle.wheel.objects) do
-		VehicleFramework.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
+		VehicleFramework.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 		if (i ~= 1) then
-			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
+			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 		end
 		if (i ~= vehicle.wheel.count) then
-			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.width, vehicle.suspension.visualsConfig.colourIndex);
+			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 		end
 	end
 end

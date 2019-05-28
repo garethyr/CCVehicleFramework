@@ -939,7 +939,7 @@ function VehicleFramework.updateChassis(self, vehicle)
 						self.Vel = Vector();
 					end
 					
-					if (not vehicle.general.allowSlidingWhileStopped and math.abs(self.RotAngle) > (15 * math.pi/180)) then
+					if (not vehicle.general.allowSlidingWhileStopped and self.Vel.Magnitude < 5 and math.abs(self.RotAngle) > (15 * math.pi/180)) then
 						self.Vel = Vector();
 						self.Pos = vehicle.general.previousPos;
 					end

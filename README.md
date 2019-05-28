@@ -7,7 +7,8 @@ If you have any questions, you can contact me here or find me on the Cortex Comm
 
 1. Download the VehicleFramework.lua file and place it in your rte
 
-2. Create your sprites and ini for your vehicle. Look at the examples to walk through them. IMPORTANT: Make sure your sprites have offset (0, 0) and have no extra space around them, i.e. the objects should reach the edge of the sprite background where possible.
+2. Create your sprites and ini for your vehicle. Look at the demo vehicle examples for more details.  
+	***IMPORTANT NOTE***: Make sure your sprites are centered and have no extra space around them, i.e. the objects should be have their SpriteOffset set to the center of the sprite, and should reach the edge of the sprite background where possible. Failure to do this may cause odd behaviour.
 
 3. Load the VehicleFramework into the game so you can use it. This is done with 2 steps:  
 	i. Add your rte to the lua package path. This is done by adding the following line to the top of your script (outside of any functions like Create):  

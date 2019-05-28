@@ -186,7 +186,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.general.deceleration = vehicle.general.deceleration or vehicle.general.acceleration/20;
 	vehicle.general.deceleration = Clamp(vehicle.general.deceleration, 0, vehicle.general.maxThrottle);
 	
-	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.02;
+	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.05;
 	vehicle.general.rotAngleCorrectionRate = Clamp(vehicle.general.rotAngleCorrectionRate, 0, 2*math.pi);
 	
 	vehicle.general.maxErasableTerrainStrength = vehicle.general.maxErasableTerrainStrength or 100;
@@ -454,7 +454,7 @@ function VehicleFramework.createWheels(self, vehicle)
 			
 			--Handle AUTO_GENERATE for vehicle.wheel.spacing
 			if (i == 1 and vehicle.wheel.spacing == VehicleFramework.AUTO_GENERATE) then
-				vehicle.wheel.spacing = math.ceil(vehicle.wheel.size[i] * 1.1);
+				vehicle.wheel.spacing = math.ceil(vehicle.wheel.size[i] * 1.15);
 			end
 			
 			vehicle.wheel.objects[i].Team = vehicle.general.team;

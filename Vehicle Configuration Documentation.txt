@@ -41,7 +41,7 @@ rotAngleCorrectionRate:
 	1. Optional - Yes
 	2. Supported Types - number
 	3. Purpose - This determines how quickly the Vehicle tilts to line up with its wheels. Effectively the number of radians it will tilt in a frame, high values will make the Vehicle always line up exactly with its wheels.
-	4. Default - 0.02
+	4. Default - 0.05
 
 maxErasableTerrainStrength:
 	1. Optional - Yes
@@ -135,7 +135,7 @@ spacing:
 	1. Optional - Yes
 	2. Supported Types - number
 	3. Purpose - This determines the distance between each wheel.
-	4. Default - the diameter of the wheel object (i.e. the length/width, not the diagonal length) * 1.1, rounded up
+	4. Default - the diameter of the wheel object (i.e. the length/width, not the diagonal length) * 1.15, rounded up
 
 count:
 	1. Optional - No

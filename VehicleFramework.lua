@@ -33,6 +33,8 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		vehicle.general.team = self.Team;
 		vehicle.general.pos = self.Pos;
 		vehicle.general.vel = self.Vel;
+		vehicle.general.previousPos = Vector(vehicle.general.pos.X, vehicle.general.pos.Y);
+		vehicle.general.previousVel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y);
 		vehicle.general.controller = self:GetController();
 		vehicle.general.throttle = 0;
 		vehicle.general.isInAir = false;
@@ -193,6 +195,10 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.general.forceWheelHorizontalLocking = (vehicle.track ~= nil or vehicle.tensioner ~= nil) and true or false;
 	end
 	
+	if (vehicle.general.allowSlidingWhileStopped == nil) then
+		vehicle.general.allowSlidingWhileStopped = false;
+	end
+	
 	vehicle.general.showDebug = vehicle.general.showDebug == true and true or false;
 	
 	--Chassis
@@ -333,6 +339,7 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 			rotAngleCorrectionRate = "number",
 			maxErasableTerrainStrength = "number",
 			forceWheelHorizontalLocking = "boolean",
+			allowSlidingWhileStopped = "boolean",
 			showDebug = "boolean"
 		},
 		chassis = {
@@ -610,10 +617,12 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 		else
 			remainderDistance = (inflection.trackDistance.Magnitude%vehicle.track.size.X)/vehicle.track.size.X;
 			extraFillerTrack = remainderDistance > numberOfTracks * 0.06;
-			if (extraFillerTrack == true) then
-				print("Adding extra filler track for inflection "..tostring(i));
-			else
-				print("NOT Adding extra filler track for inflection "..tostring(i));
+			if (vehicle.showDebug) then
+				if (extraFillerTrack == true) then
+					print("Adding extra filler track for inflection "..tostring(i));
+				else
+					print("NOT Adding extra filler track for inflection "..tostring(i));
+				end
 			end
 		end
 		numberOfTracks = extraFillerTrack and numberOfTracks + 1 or numberOfTracks;
@@ -717,6 +726,9 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.updateSuspension(self, vehicle);
 		end
+		
+		vehicle.general.previousPos:SetXY(vehicle.general.pos.X, vehicle.general.pos.Y);
+		vehicle.general.previousVel:SetXY(vehicle.general.vel.X, vehicle.general.vel.Y);
 	end
 	
 	return vehicle;
@@ -729,13 +741,15 @@ function VehicleFramework.updateDestruction(self, vehicle)
 	end
 	
 	if (vehicle.destruction.overturnedTimer:IsPastSimMS(vehicle.destruction.overturnedInterval)) then
-		for _, wheelObject in ipairs(vehicle.wheel.objects) do
-			if (wheelObject.Pos.Y < vehicle.general.pos.Y) then
-				vehicle.destruction.overturnedCounter = vehicle.destruction.overturnedCounter + 1;
-			end
+		local rotAngleInDegrees = math.floor(self.RotAngle * 180 / math.pi)%360;
+		if ((rotAngleInDegrees > 95 and rotAngleInDegrees < 265) or (rotAngleInDegrees < -95 and rotAngleInDegrees > -265)) then
+			vehicle.destruction.overturnedCounter = vehicle.destruction.overturnedCounter + 1;
 		end
 		
 		if (vehicle.destruction.overturnedCounter > vehicle.destruction.overturnedLimit) then
+			if (vehicle.showDebug) then
+				print ("Vehicle was overturned and went boom cause it hit limit "..tostring(vehicle.destruction.overturnedLimit));
+			end
 			self:GibThis();
 			return true;
 		else
@@ -920,8 +934,15 @@ function VehicleFramework.updateChassis(self, vehicle)
 			if (not vehicle.general.isDriving) then
 				self.Vel = self.Vel * (1 - vehicle.general.deceleration * (vehicle.general.isStronglyDecelerating and 2 or 1));
 		
-				if (self.Vel.Magnitude < vehicle.general.acceleration and vehicle.general.throttle == 0) then
-					self.Vel = Vector(0, 0);
+				if (vehicle.general.throttle == 0) then
+					if (self.Vel.Magnitude < vehicle.general.acceleration) then
+						self.Vel = Vector();
+					end
+					
+					if (not vehicle.general.allowSlidingWhileStopped and math.abs(self.RotAngle) > (15 * math.pi/180)) then
+						self.Vel = Vector();
+						self.Pos = vehicle.general.previousPos;
+					end
 				end
 			else
 				if (vehicle.general.movingOppositeToThrottle) then

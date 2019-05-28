@@ -55,6 +55,12 @@ forceWheelHorizontalLocking:
 	3. Purpose - This determines whether the Vehicle's wheels will be forcibly moved into the correct horizontal position, or whether this will be handled in a more natural but less effective way.
 	4. Default - The default for this is determined by whether or not the Vehicle has tensioners and/or tracks. If it does, this will default to true, otherwise it will default to false.
 
+allowSlidingWhileStopped:
+	1. Optional - Yes
+	2. Supported Types - boolean
+	3. Purpose - This determines whether or not the vehicle will slide down hills when not actively moving against it. Modifying this on the fly would allow you to put in a handbrake/parked mode functionality.
+	4. Default - false
+
 showDebug:
 	1. Optional - Yes
 	2. Supported Types - boolean
@@ -84,7 +90,7 @@ lengthOverride:
 stiffness:
 	1. Optional - No
 	2. Supported Types - number
-	3. Purpose - This determines the stiffness of the springs that provide suspension. Overly low values will mean your Vehicle will collapse on itself, and overly high values can cause significant problems and potentially crash the game (due to issues in the game engine). With default chassis and wheel stiffness multipliers a value between 20 and 50 usually works well.
+	3. Purpose - This determines the stiffness of the springs that provide suspension. Overly low values will mean your Vehicle will collapse on itself, and overly high values can cause significant problems and potentially crash the game (due to issues in the game engine). With default chassis and wheel stiffness multipliers a value between 20 and 100 usually works well.
 
 chassisStiffnessModifier:
 	1. Optional - Yes

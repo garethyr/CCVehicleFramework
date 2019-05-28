@@ -660,7 +660,7 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 	end
 end
 
-function VehicleFramework.destroyVehicle(vehicle)
+function VehicleFramework.deleteVehicle(vehicle)
 	if (vehicle) then
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 			for _, suspensionObject in ipairs(vehicle.suspension.objects) do

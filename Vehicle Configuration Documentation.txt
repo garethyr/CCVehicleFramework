@@ -84,7 +84,7 @@ lengthOverride:
 stiffness:
 	1. Optional - No
 	2. Supported Types - number
-	3. Purpose - This determines the stiffness of the springs that provide suspension. Overly low values will mean your Vehicle will collapse on itself, and overly high values can cause significant problems and potentially crash the game (due to issues in the game engine). 
+	3. Purpose - This determines the stiffness of the springs that provide suspension. Overly low values will mean your Vehicle will collapse on itself, and overly high values can cause significant problems and potentially crash the game (due to issues in the game engine). With default chassis and wheel stiffness multipliers a value between 20 and 50 usually works well.
 
 chassisStiffnessModifier:
 	1. Optional - Yes

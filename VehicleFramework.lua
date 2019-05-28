@@ -302,9 +302,9 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.track.maxWounds = vehicle.track.maxWounds or 50;
 		vehicle.track.maxWounds = Clamp(vehicle.track.maxWounds, 0, 1000000000);
 		
-		vehicle.track.tensionerAnchorType = vehicle.track.tensionerAnchorType or VehicleFramework.TrackAnchorType.FIRST_AND_LAST;
+		vehicle.track.tensionerAnchorType = vehicle.track.tensionerAnchorType or VehicleFramework.TrackAnchorType.ALL;
 		
-		vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.FIRST_AND_LAST;
+		vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.ALL;
 		
 		vehicle.track.objectName = vehicle.track.objectName or self.PresetName.." Track";
 		
@@ -446,7 +446,7 @@ function VehicleFramework.createWheels(self, vehicle)
 			
 			--Handle AUTO_GENERATE for vehicle.wheel.spacing
 			if (i == 1 and vehicle.wheel.spacing == VehicleFramework.AUTO_GENERATE) then
-				vehicle.wheel.spacing = vehicle.wheel.size[i] * 1.1;
+				vehicle.wheel.spacing = math.ceil(vehicle.wheel.size[i] * 1.1);
 			end
 			
 			vehicle.wheel.objects[i].Team = vehicle.general.team;

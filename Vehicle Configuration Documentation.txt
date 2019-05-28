@@ -129,7 +129,7 @@ spacing:
 	1. Optional - Yes
 	2. Supported Types - number
 	3. Purpose - This determines the distance between each wheel.
-	4. Default - the diameter of the wheel object (i.e. the length/width, not the diagonal length) * 1.1
+	4. Default - the diameter of the wheel object (i.e. the length/width, not the diagonal length) * 1.1, rounded up
 
 count:
 	1. Optional - No
@@ -208,13 +208,13 @@ tensionerAnchorType:
 	1. Optional - Yes
 	2. Supported Types - VehicleFramework.TrackAnchorType.ALL/FIRST_AND_LAST (or the numbers those enum values represent)
 	3. Purpose - This determines which tensioners the track will be anchored to, so tracks next to those tensioners will behave as if attached to them. ALL means all tensioners and FIRST_AND_LAST means the first and last tensioners.
-	4. Default - TrackAnchorType.FIRST_AND_LAST
+	4. Default - TrackAnchorType.ALL
 
 wheelAnchorType:
 	1. Optional - Yes
 	2. Supported Types - VehicleFramework.TrackAnchorType.ALL/FIRST_AND_LAST (or the numbers those enum values represent)
 	3. Purpose - This determines which wheels the track will be anchored to, so tracks next to those wheels will behave as if attached to them. ALL means all wheels and FIRST_AND_LAST means the first and last wheels.
-	4. Default - TrackAnchorType.FIRST_AND_LAST
+	4. Default - TrackAnchorType.ALL
 	
 objectName:
 	1. Optional - Yes

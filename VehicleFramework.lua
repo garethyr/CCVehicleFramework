@@ -889,12 +889,13 @@ function VehicleFramework.updateTrack(self, vehicle)
 	if (vehicle.track ~= nil) then
 		--VehicleFramework.validateTrackIntegrity(vehicle);
 		
-		local prevTrackObject, nextTrackObject;
+		local prevTrackObject, nextTrackObject, distanceBetweenPrevAndNext;
 		local currentInflectionNumber = 1;
 		local currentInflection = vehicle.track.inflection[currentInflectionNumber];
 		for i, trackObject in ipairs(vehicle.track.objects) do
 			prevTrackObject = vehicle.track.objects[(i == 1 and #vehicle.track.objects or i - 1)];
 			nextTrackObject = vehicle.track.objects[(i == #vehicle.track.objects and 1 or i + 1)];
+			distanceBetweenPrevAndNext = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX);
 			
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
 				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
@@ -907,14 +908,21 @@ function VehicleFramework.updateTrack(self, vehicle)
 				if (vehicle.track.skippedEnds[i] == true and i == vehicle.track.trackEnds[currentInflectionNumber] - 1) then
 					trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, vehicle.general.pos + Vector(currentInflection.next.trackStart.X, currentInflection.next.trackStart.Y):RadRotate(self.RotAngle), SceneMan.SceneWrapsX) * 0.5;
 				else
-					trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
+					trackObject.Pos = prevTrackObject.Pos + distanceBetweenPrevAndNext * 0.5;
 				end
 				
 				
 			end
 			
+			
 			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - self.RotAngle - vehicle.track.directions[i];
+			--local angleOffset = ((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi) - self.RotAngle - vehicle.track.directions[i];
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
+			
+			--if (i == 8) then
+			--	print("i: "..tostring(i)..", angleBetweenPrevAndNext: "..tostring((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi)..", angleOffset: "..tostring(angleOffset)..", angleLimits: "..tostring(vehicle.track.maxRotationDeviation)..", clampedAngle: "..tostring(clampedAngle));
+			--end
+			
 			trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i] + clampedAngle;
 			
 			trackObject.Vel = self.Vel;

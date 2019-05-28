@@ -190,7 +190,7 @@ tightness:
 	1. Optional - Yes
 	2. Supported Types - number
 	3. Purpose - This determines how tightly your track will hug the objects it wraps around. Higher values mean tighter tracks. Anything below 0.5 or above 2 will probably be stupid
-	4. Default - 1
+	4. Default - 1.5
 
 maxRotationDeviation:
 	1. Optional - Yes

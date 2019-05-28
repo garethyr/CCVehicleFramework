@@ -293,7 +293,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	if (vehicle.track ~= nil) then
 		--vehicle.track.size is handled elsewhere
 		
-		vehicle.track.tightness = vehicle.track.tightness or 1;
+		vehicle.track.tightness = vehicle.track.tightness or 1.5;
 		vehicle.track.tightness = Clamp(vehicle.track.tightness, 0.000001, 1000000000);
 		
 		vehicle.track.maxRotationDeviation = vehicle.track.maxRotationDeviation or (15 * math.pi)/180;
@@ -513,13 +513,7 @@ function VehicleFramework.createTensioners(self, vehicle)
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
-				--Everything below here doesn't seem to work, need to figure out a way to make these not hit the wheels
-				--[[
-				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
-				for _, wheelObject in ipairs(vehicle.wheel.objects) do
-					vehicle.tensioner.objects[i]:SetWhichMOToNotHit(wheelObject, -1);
-				end
-				--]]
+				
 				MovableMan:AddParticle(vehicle.tensioner.objects[i]);
 			end
 		end

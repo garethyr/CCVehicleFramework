@@ -1,4 +1,4 @@
-require("SpringFramework/SpringFramework");
+require("SpringFramework");
 
 VehicleFramework = {};
 

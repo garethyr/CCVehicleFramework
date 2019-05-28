@@ -256,28 +256,28 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
 		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
 	
-		assert(vehicle.tensioner.displacement, "You must specify a displacement for your tensioners. Please check the Vehicle Configuration Documentation.");
-		if (type(vehicle.tensioner.displacement) == "number") then
-			local displacement = vehicle.tensioner.displacement;
-			vehicle.tensioner.displacement = {};
+		assert(vehicle.tensioner.offsetLength, "You must specify an offsetLength for your tensioners. Please check the Vehicle Configuration Documentation.");
+		if (type(vehicle.tensioner.offsetLength) == "number") then
+			local offsetLength = vehicle.tensioner.offsetLength;
+			vehicle.tensioner.offsetLength = {};
 			
 			for i = 1, vehicle.tensioner.count do
-				vehicle.tensioner.displacement[i] = displacement;
+				vehicle.tensioner.offsetLength[i] = offsetLength;
 			end
-		elseif (type(vehicle.tensioner.displacement) == "table") then
-			if (vehicle.tensioner.displacement.inside ~= nil and vehicle.tensioner.displacement.outside ~= nil) then
+		elseif (type(vehicle.tensioner.offsetLength) == "table") then
+			if (vehicle.tensioner.offsetLength.inside ~= nil and vehicle.tensioner.offsetLength.outside ~= nil) then
 				for i = 1, vehicle.tensioner.count do
 					if (i == 1 or i == vehicle.tensioner.count) then
-						vehicle.tensioner.displacement[i] = vehicle.tensioner.displacement.outside;
+						vehicle.tensioner.offsetLength[i] = vehicle.tensioner.offsetLength.outside;
 					else
-						vehicle.tensioner.displacement[i] = vehicle.tensioner.displacement.inside;
+						vehicle.tensioner.offsetLength[i] = vehicle.tensioner.offsetLength.inside;
 					end
 				end
-				vehicle.tensioner.displacement.inside = nil;
-				vehicle.tensioner.displacement.outside = nil;
-			elseif (vehicle.tensioner.displacement[1] ~= nil) then
+				vehicle.tensioner.offsetLength.inside = nil;
+				vehicle.tensioner.offsetLength.outside = nil;
+			elseif (vehicle.tensioner.offsetLength[1] ~= nil) then
 				for i = 1, vehicle.tensioner.count do
-					assert(type(vehicle.tensioner.displacement[i]) == "number", "You have specified displacements for individual tensioners but are missing a number for tensioner "..tostring(i)..". Please check the Vehicle Configuration Documentation.");
+					assert(type(vehicle.tensioner.offsetLength[i]) == "number", "You have specified displacements for individual tensioners but are missing a number for tensioner "..tostring(i)..". Please check the Vehicle Configuration Documentation.");
 				end
 			else
 				error("You have used a table for your tensioner displacements, but have not populated it properly. Please check the Vehicle Configuration Documentation.");
@@ -353,7 +353,7 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 			objectRTE = "string"
 		},
 		tensioner = {
-			displacement = {"number", "table"},
+			offsetLength = {"number", "table"},
 			spacing = {"number", "string"},
 			count = "number",
 			objectName = "string",
@@ -508,7 +508,7 @@ function VehicleFramework.createTensioners(self, vehicle)
 				else
 					xOffset = vehicle.tensioner.spacing * (i - vehicle.tensioner.midTensioner) + (vehicle.tensioner.evenTensionerCount and -vehicle.tensioner.spacing * 0.5 or 0);
 				end
-				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.displacement[i]);
+				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.offsetLength[i]);
 				
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);

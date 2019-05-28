@@ -111,6 +111,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 			vehicle.track.trackStarts = {};
 			vehicle.track.trackEnds = {};
 			vehicle.track.extraFillers = {};
+			vehicle.track.skippedEnds = {};
 			vehicle.track.directions = {};
 			vehicle.track.objects = {};
 		end
@@ -639,9 +640,30 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 			if (j == 1) then
 				table.insert(vehicle.track.unrotatedOffsets, inflection.trackStart);-- + (i ~= 1 and Vector(vehicle.track.size.X * 0.5, 0):RadRotate(inflection.trackDirection) or Vector()));
 				table.insert(vehicle.track.trackStarts, #vehicle.track.unrotatedOffsets);
+				
+				--If the last inflection skipped its end cause it would be duplicated by this start, set this start as the previous inflection's
+				if (vehicle.track.skippedEnds[i-1] == true) then
+					table.insert(vehicle.track.trackEnds, #vehicle.track.unrotatedOffsets);
+				end
 			elseif (j == numberOfTracks) then
-				table.insert(vehicle.track.unrotatedOffsets, inflection.trackEnd);
-				table.insert(vehicle.track.trackEnds, #vehicle.track.unrotatedOffsets);
+				if (showDebug) then
+					print("direction difference: "..tostring(math.abs(inflection.next.trackDirection - inflection.trackDirection))..", distance magnitude: "..tostring(SceneMan:ShortestDistance(inflection.trackEnd, inflection.next.trackStart, SceneMan.SceneWrapsX).Magnitude));
+				end
+				if (math.abs(inflection.next.trackDirection - inflection.trackDirection)  > (30 * math.pi/180) and SceneMan:ShortestDistance(inflection.trackEnd, inflection.next.trackStart, SceneMan.SceneWrapsX).Magnitude > vehicle.track.size.Magnitude * 0.1) then
+					table.insert(vehicle.track.unrotatedOffsets, inflection.trackEnd);
+					table.insert(vehicle.track.trackEnds, #vehicle.track.unrotatedOffsets);
+					vehicle.track.skippedEnds[i] = false;
+					if (showDebug) then
+						print("Adding end track for inflection "..tostring(i));
+					end
+				else
+					numberOfTracks = numberOfTracks - 1;
+					vehicle.track.skippedEnds[i] = true;
+					if (showDebug) then
+						print("Not adding end track for inflection "..tostring(i));
+					end
+					break;
+				end
 			--elseif (j == numberOfTracks) then
 			--	table.insert(vehicle.track.unrotatedOffsets, (inflection.trackEnd + inflection.next.trackStart) * 0.5);
 			else
@@ -657,7 +679,7 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 		--Move filler tracks to the middle of their neighbouring tracks
 		if (extraFillerTrack) then
 			local fillerNumber = vehicle.track.extraFillers[#vehicle.track.extraFillers];
-			vehicle.track.unrotatedOffsets[fillerNumber] = (vehicle.track.unrotatedOffsets[fillerNumber - 1] + vehicle.track.unrotatedOffsets[fillerNumber + 1]) * 0.5;
+			vehicle.track.unrotatedOffsets[fillerNumber] = (vehicle.track.unrotatedOffsets[fillerNumber - 1] + (vehicle.track.unrotatedOffsets[fillerNumber + 1] or inflection.trackEnd)) * 0.5;
 		end
 		vehicle.track.count = vehicle.track.count + numberOfTracks;
 	end
@@ -866,7 +888,8 @@ end
 function VehicleFramework.updateTrack(self, vehicle)
 	if (vehicle.track ~= nil) then
 		--VehicleFramework.validateTrackIntegrity(vehicle);
-		local prevTrackObject, nextTrackObject, prevTrackDistance, nextTrackDistance, anchorDistance;
+		
+		local prevTrackObject, nextTrackObject;
 		local currentInflectionNumber = 1;
 		local currentInflection = vehicle.track.inflection[currentInflectionNumber];
 		for i, trackObject in ipairs(vehicle.track.objects) do
@@ -881,7 +904,13 @@ function VehicleFramework.updateTrack(self, vehicle)
 				
 				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
 			else
-				trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
+				if (vehicle.track.skippedEnds[i] == true and i == vehicle.track.trackEnds[currentInflectionNumber] - 1) then
+					trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, vehicle.general.pos + Vector(currentInflection.next.trackStart.X, currentInflection.next.trackStart.Y):RadRotate(self.RotAngle), SceneMan.SceneWrapsX) * 0.5;
+				else
+					trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX) * 0.5;
+				end
+				
+				
 			end
 			
 			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - self.RotAngle - vehicle.track.directions[i];

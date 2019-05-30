@@ -38,6 +38,9 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		vehicle.general.controller = self:GetController();
 		vehicle.general.throttle = 0;
 		vehicle.general.isInAir = false;
+		vehicle.general.halfOrMoreInAir = false;
+		vehicle.general.distanceFallen = 0
+		vehicle.general.resetDistanceFallenForGround = true;
 		vehicle.general.isDriving = false;
 		vehicle.general.isStronglyDecelerating = false;
 		
@@ -798,6 +801,21 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 	end
 	vehicle.general.isInAir = inAirWheelCount == vehicle.wheel.count;
 	vehicle.general.halfOrMoreInAir = inAirWheelCount > vehicle.wheel.count * 0.5;
+	
+	if (vehicle.general.isInAir) then
+		if (vehicle.general.vel.Y > 0) then
+			vehicle.general.distanceFallen = vehicle.general.distanceFallen + SceneMan:ShortestDistance(vehicle.general.previousPos, vehicle.general.pos, SceneMan.SceneWrapsX).Y;
+			vehicle.general.resetDistanceFallenForGround = false;
+		else
+			vehicle.general.distanceFallen = 0;
+		end
+	else
+		if (vehicle.general.resetDistanceFallenForGround == false) then
+			vehicle.general.resetDistanceFallenForGround = true;
+		else
+			vehicle.general.distanceFallen = 0;
+		end
+	end
 end
 
 function VehicleFramework.updateThrottle(vehicle)

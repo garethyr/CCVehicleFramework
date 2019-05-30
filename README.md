@@ -34,6 +34,7 @@ Vehicle configuration is broken into 7 sections, each of which should be a subta
 * tensioner  
 * track  
 * destruction  
+* layer  
 	
 The order of these sections doesn't matter, but it may be easiest to organize them in the order above. Sections marked with (\*)s are required and must have some amount of content, sections without can be skipped
 For more information on the configuration options in these sections, see the *Vehicle Configuration Documentation*.
@@ -65,7 +66,60 @@ To make a tracked vehicle, it would be as follows:
 			count = number
 		},
 		tensioner = {
-			displacement = number
+			offsetLength = number
 		},
 		track = true
+	}
+
+The maximum configuration for a vehicle, ignoring advanced user features, would be as follows:
+
+	vehicleConfig = {
+		general = {
+			maxSpeed = number,
+			maxThrottle = number,
+			acceleration = number,
+			deceleration = number,
+			rotAngleCorrectionRate = number,
+			maxErasableTerrainStrength = number,
+			forceWheelHorizontalLocking = boolean,
+			allowSlidingWhileStopped = boolean,
+			showDebug = boolean
+		},
+		suspension = {
+			defaultLength = {min = number, normal = number, max = number},
+			lengthOverride = {index of any wheel = {min = number, normal = number, max = number}},
+			stiffness = number,
+			chassisStiffnessModifier = number,
+			wheelStiffnessModifier = number,
+			visualsType = number (use VehicleFramework.SuspensionVisualsType enum for readable values),
+			visualsConfig = {width = number, colourIndex = number} (for DRAWN) OR {objectName = string, objectRTE = string} (for SPRITE)
+		},
+		wheel = {
+			count = number,
+			spacing = number,
+			objectName = string,
+			objectRTE = string
+		},
+		tensioner = {
+			offsetLength = number OR {inside = number, outside = number} OR {separate numbers for every wheel index},
+			count = number,
+			spacing = number,
+			objectName = string,
+			objectRTE = string
+		},
+		track = {
+			tighness = number,
+			maxRotationDeviation = number,
+			maxWounds = number,
+			tensionerAnchorType = number (use VehicleFramework.TrackAnchorType enum for readable values),
+			wheelAnchorType = number (use VehicleFramework.TrackAnchorType enum for readable values),
+			objectName = string,
+			objectRTE = string
+		},
+		destruction = {
+			overturnedLimit = number
+		},
+		layer = {
+			addLayerInterval = number
+		}
 	}

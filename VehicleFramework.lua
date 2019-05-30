@@ -1,4 +1,4 @@
-require("SpringFramework");
+require("SpringFramework/SpringFramework");
 
 VehicleFramework = {};
 
@@ -18,160 +18,142 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.tensioner = vehicle.tensioner or nil;
 	vehicle.track = vehicle.track == true and {} or vehicle.track;
 	vehicle.destruction = vehicle.destruction or {};
+	vehicle.layer = vehicle.layer or {};
 	
-	vehicle.general.fullyCreated = vehicle.general.fullyCreated or 0;
-	if (vehicle.general.fullyCreated == 0) then
-		--------------------
-		--GENERAL SETTINGS--
-		--------------------
-		vehicle.general.RTE = string.sub(self:GetModuleAndPresetName(), 1, string.find(self:GetModuleAndPresetName(), "/") - 1);
-		
-		vehicle = VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
-		
-		vehicle = VehicleFramework.ensureVehicleConfigIsValid(vehicle);
-		
-		vehicle.general.team = self.Team;
-		vehicle.general.pos = self.Pos;
-		vehicle.general.vel = self.Vel;
-		vehicle.general.previousPos = Vector(vehicle.general.pos.X, vehicle.general.pos.Y);
-		vehicle.general.previousVel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y);
-		vehicle.general.controller = self:GetController();
-		vehicle.general.throttle = 0;
-		vehicle.general.isInAir = false;
-		vehicle.general.halfOrMoreInAir = false;
-		vehicle.general.distanceFallen = 0
-		vehicle.general.resetDistanceFallenForGround = true;
-		vehicle.general.isDriving = false;
-		vehicle.general.isStronglyDecelerating = false;
-		
-		
-		--------------------
-		--CHASSIS SETTINGS--
-		--------------------
-		vehicle.chassis.size = self.SpriteOffset * -2;
-		
-		-----------------------
-		--Suspension SETTINGS--
-		-----------------------
-		vehicle.suspension.springs = {};
-		vehicle.suspension.objects = {};
-		vehicle.suspension.offsets = {main = {}, midPoint = {}};
-		vehicle.suspension.length = {};
-		vehicle.suspension.longest = {max = 0};
-		
+	--------------------
+	--GENERAL SETTINGS--
+	--------------------
+	vehicle.general.RTE = string.sub(self:GetModuleAndPresetName(), 1, string.find(self:GetModuleAndPresetName(), "/") - 1);
+	
+	vehicle = VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
+	
+	VehicleFramework.ensureVehicleConfigIsValid(vehicle);
+	
+	vehicle.general.team = self.Team;
+	vehicle.general.pos = self.Pos;
+	vehicle.general.vel = self.Vel;
+	vehicle.general.previousPos = Vector(vehicle.general.pos.X, vehicle.general.pos.Y);
+	vehicle.general.previousVel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y);
+	vehicle.general.controller = self:GetController();
+	vehicle.general.throttle = 0;
+	vehicle.general.isInAir = false;
+	vehicle.general.halfOrMoreInAir = false;
+	vehicle.general.distanceFallen = 0
+	vehicle.general.resetDistanceFallenForGround = true;
+	vehicle.general.isDriving = false;
+	vehicle.general.isStronglyDecelerating = false;
+	
+	--------------------
+	--CHASSIS SETTINGS--
+	--------------------
+	vehicle.chassis.size = self.SpriteOffset * -2;
+	
+	-----------------------
+	--Suspension SETTINGS--
+	-----------------------
+	vehicle.suspension.springs = {};
+	vehicle.suspension.objects = {};
+	vehicle.suspension.offsets = {main = {}, midPoint = {}};
+	vehicle.suspension.length = {};
+	vehicle.suspension.longest = {max = 0};
+	
+	for i = 1, vehicle.wheel.count do
+		if (vehicle.suspension.defaultLength ~= VehicleFramework.AUTO_GENERATE) then
+			vehicle.suspension.length[i] = {min = vehicle.suspension.defaultLength.min, normal = vehicle.suspension.defaultLength.normal, max = vehicle.suspension.defaultLength.max};
+		else
+			vehicle.suspension.length[i] = VehicleFramework.AUTO_GENERATE;
+		end
+		if (vehicle.suspension.lengthOverride ~= nil and vehicle.suspension.lengthOverride[i] ~= nil) then
+			vehicle.suspension.length[i] = {min = vehicle.suspension.lengthOverride[i].min, normal = vehicle.suspension.lengthOverride[i].normal, max = vehicle.suspension.lengthOverride[i].max};
+		end
+		if (vehicle.suspension.length[i] ~= VehicleFramework.AUTO_GENERATE) then
+			vehicle.suspension.length[i].difference = vehicle.suspension.length[i].max - vehicle.suspension.length[i].min;
+			vehicle.suspension.length[i].mid = vehicle.suspension.length[i].min + vehicle.suspension.length[i].difference * 0.5;
+			vehicle.suspension.length[i].normal = vehicle.suspension.length[i].normal or vehicle.suspension.length[i].mid;
+		end
+	end
+	vehicle.suspension.defaultLength = nil; vehicle.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
+	
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+		vehicle.suspension.visualsConfig.widths = {};
 		for i = 1, vehicle.wheel.count do
-			if (vehicle.suspension.defaultLength ~= VehicleFramework.AUTO_GENERATE) then
-				vehicle.suspension.length[i] = {min = vehicle.suspension.defaultLength.min, normal = vehicle.suspension.defaultLength.normal, max = vehicle.suspension.defaultLength.max};
-			else
-				vehicle.suspension.length[i] = VehicleFramework.AUTO_GENERATE;
-			end
-			if (vehicle.suspension.lengthOverride ~= nil and vehicle.suspension.lengthOverride[i] ~= nil) then
-				vehicle.suspension.length[i] = {min = vehicle.suspension.lengthOverride[i].min, normal = vehicle.suspension.lengthOverride[i].normal, max = vehicle.suspension.lengthOverride[i].max};
-			end
-			if (vehicle.suspension.length[i] ~= VehicleFramework.AUTO_GENERATE) then
-				vehicle.suspension.length[i].difference = vehicle.suspension.length[i].max - vehicle.suspension.length[i].min;
-				vehicle.suspension.length[i].mid = vehicle.suspension.length[i].min + vehicle.suspension.length[i].difference * 0.5;
-				vehicle.suspension.length[i].normal = vehicle.suspension.length[i].normal or vehicle.suspension.length[i].mid;
-			end
+			vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.width;
 		end
-		vehicle.suspension.defaultLength = nil; vehicle.suspension.lengthOverride = nil; --Clean these up so we don't use them accidentally in future
-		
-		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
-			vehicle.suspension.visualsConfig.widths = {};
-			for i = 1, vehicle.wheel.count do
-				vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.width;
-			end
-			vehicle.suspension.visualsConfig.width = nil; --Clean this up so we don't use it accidentally in future
-		end
-		
-		------------------
-		--WHEEL SETTINGS--
-		------------------
-		vehicle.wheel.objects = {};
-		vehicle.wheel.size = {};
-		vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
-		vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
-		vehicle.wheel.isInAir = {};
-		
-		-----------------------
-		--TENSIONER SETTINGS--
-		-----------------------
-		if (vehicle.tensioner ~= nil) then
-			vehicle.tensioner.objects = {};
-			vehicle.tensioner.unrotatedOffsets = {};
-			vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
-			vehicle.tensioner.size = {};
-			vehicle.tensioner.evenTensionerCount = vehicle.tensioner.count % 2 == 0;
-			vehicle.tensioner.midTensioner = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.count * 0.5 or math.ceil(vehicle.tensioner.count * 0.5);
-		end
-		
-		------------------
-		--TRACK SETTINGS--
-		------------------
-		if (vehicle.track ~= nil) then
-			vehicle.track.count = 0;
-			vehicle.track.unrotatedOffsets = {};
-			vehicle.track.trackStarts = {};
-			vehicle.track.trackEnds = {};
-			vehicle.track.extraFillers = {};
-			vehicle.track.skippedEnds = {};
-			vehicle.track.directions = {};
-			vehicle.track.objects = {};
-		end
-		
-		------------------------
-		--DESTRUCTION SETTINGS--
-		------------------------
-		vehicle.destruction.overturnedTimer = Timer();
-		vehicle.destruction.overturnedInterval = 1000;
-		vehicle.destruction.overturnedCounter = 0;
-		
-		vehicle.general.fullyCreated = vehicle.general.fullyCreated + 1;
-		return vehicle;
+		vehicle.suspension.visualsConfig.width = nil; --Clean this up so we don't use it accidentally in future
 	end
 	
-	if (vehicle.general.fullyCreated == 1) then
-		-----------------------------
-		--OBJECT CREATION AND SETUP--
-		-----------------------------
-		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
-			VehicleFramework.createSuspensionSprites(vehicle);
-		end
-		
-		VehicleFramework.createWheels(self, vehicle);
-		
-		--Handle AUTO_GENERATE for vehicle.suspension.visualsConfig.widths
-		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
-			for i = 1, vehicle.wheel.count do
-				vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.widths[i] == VehicleFramework.AUTO_GENERATE and vehicle.wheel.size[i]/3 or vehicle.suspension.visualsConfig.widths[i];
-			end
-		end
-		
-		VehicleFramework.createSprings(self, vehicle);
-		
-		VehicleFramework.createTensioners(self, vehicle);
-		
-		VehicleFramework.createTrack(self, vehicle);
-		
-		--TODO This does nothing!
-		if (not vehicle.general.forceWheelHorizontalLocking) then
-			for _, wheelObject in ipairs(vehicle.wheel.objects) do
-				if (vehicle.tensioner ~= nil) then
-					for __, tensionerObject in ipairs(vehicle.tensioner.objects) do
-						wheelObject:SetWhichMOToNotHit(tensionerObject, -1);
-					end
-				end
-				if (vehicle.track ~= nil) then
-					for __, trackObject in ipairs(vehicle.track.objects) do
-						wheelObject:SetWhichMOToNotHit(trackObject, -1);
-					end
-				end
-			end
-		end
-		
-		vehicle.general.fullyCreated = true;
-		return vehicle;
+	------------------
+	--WHEEL SETTINGS--
+	------------------
+	vehicle.wheel.objects = {};
+	vehicle.wheel.size = {};
+	vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
+	vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
+	vehicle.wheel.isInAir = {};
+	
+	-----------------------
+	--TENSIONER SETTINGS--
+	-----------------------
+	if (vehicle.tensioner ~= nil) then
+		vehicle.tensioner.objects = {};
+		vehicle.tensioner.unrotatedOffsets = {};
+		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
+		vehicle.tensioner.size = {};
+		vehicle.tensioner.evenTensionerCount = vehicle.tensioner.count % 2 == 0;
+		vehicle.tensioner.midTensioner = vehicle.tensioner.evenTensionerCount and vehicle.tensioner.count * 0.5 or math.ceil(vehicle.tensioner.count * 0.5);
 	end
+	
+	------------------
+	--TRACK SETTINGS--
+	------------------
+	if (vehicle.track ~= nil) then
+		vehicle.track.count = 0;
+		vehicle.track.unrotatedOffsets = {};
+		vehicle.track.trackStarts = {};
+		vehicle.track.trackEnds = {};
+		vehicle.track.extraFillers = {};
+		vehicle.track.skippedEnds = {};
+		vehicle.track.directions = {};
+		vehicle.track.objects = {};
+	end
+	
+	------------------------
+	--DESTRUCTION SETTINGS--
+	------------------------
+	vehicle.destruction.overturnedTimer = Timer();
+	vehicle.destruction.overturnedInterval = 1000;
+	vehicle.destruction.overturnedCounter = 0;
+	
+	------------------
+	--LAYER SETTINGS--
+	------------------
+	vehicle.layer.current = 1;
+	vehicle.layer.allLayersAdded = false;
+	vehicle.layer.addLayerTimer = Timer();
+	
+	-----------------------------
+	--OBJECT CREATION AND SETUP--
+	-----------------------------
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+		VehicleFramework.createSuspensionSprites(vehicle);
+	end
+	
+	VehicleFramework.createWheels(self, vehicle);
+	
+	--Handle AUTO_GENERATE for vehicle.suspension.visualsConfig.widths
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
+		for i = 1, vehicle.wheel.count do
+			vehicle.suspension.visualsConfig.widths[i] = vehicle.suspension.visualsConfig.widths[i] == VehicleFramework.AUTO_GENERATE and vehicle.wheel.size[i]/3 or vehicle.suspension.visualsConfig.widths[i];
+		end
+	end
+	
+	VehicleFramework.createSprings(self, vehicle);
+	
+	VehicleFramework.createTensioners(self, vehicle);
+	
+	VehicleFramework.createTrack(self, vehicle);
+	
+	return vehicle;
 end
 
 function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
@@ -327,12 +309,51 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.destruction.overturnedLimit = vehicle.destruction.overturnedLimit or 10;
 	vehicle.destruction.overturnedLimit = Clamp(vehicle.destruction.overturnedLimit, 1, 1000000000);
 	
+	--Layer
+	vehicle.layer.addLayerInterval = vehicle.layer.addLayerInterval or 10;
+	vehicle.layer.addLayerInterval = Clamp(vehicle.layer.addLayerInterval, 1, 1000000000);
+	
+	if (vehicle.layer[1] ~= nil) then
+		--If there's a custom layer config, ensure it has required layers
+		local necessaryLayers = {};
+		
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+			necessaryLayers.suspension = false;
+		end
+		necessaryLayers.wheel = false;
+		if (vehicle.tensioner ~= nil) then
+			necessaryLayers.tensioner = false;
+		end
+		if (vehicle.track ~= nil) then
+			necessaryLayers.track = false;
+		end
+		
+		for necessaryLayer, value in pairs(necessaryLayers) do
+			for _, layer in ipairs(vehicle.layer) do
+				if (layer == necessaryLayer) then
+					value = true;
+					break;
+				end
+			end
+			assert(value == true, "Your layer config is missing the necessary layer entry for "..necessaryLayer..". Please check the Vehicle Configuration Documentation.");
+		end
+	else
+		table.insert(vehicle.layer, "suspension");
+		table.insert(vehicle.layer, "wheel");
+		table.insert(vehicle.layer, "tensioner");
+		table.insert(vehicle.layer, "track");
+		if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.SPRITE) then
+			table.remove(vehicle.layer, 1);
+		end
+	end
+	
 	return vehicle;
 end
 
 function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 	local ignoredKeys = {
-		general = {fullyCreated = true, RTE = true}
+		general = {RTE = true},
+		layer = {_any = {"number"}}
 	};
 	local supportedTypes = {
 		general = {
@@ -384,30 +405,44 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 		destruction = {
 			overturnedLimit = "number"
 		},
+		layer = {
+			addLayerInterval = "number"
+		}
 	}
 	--Ensure everything is a real configuration option and has the correct type
 	for categoryKey, categoryTable in pairs(vehicle) do
 		for optionKey, optionValue in pairs(categoryTable) do
-			if (ignoredKeys[categoryKey] == nil or ignoredKeys[categoryKey][optionKey] ~= true) then
+			if (ignoredKeys[categoryKey] == nil or (ignoredKeys[categoryKey][optionKey] ~= true and ignoredKeys[categoryKey]._all ~= true)) then
 				assert(supportedTypes[categoryKey], "vehicle."..tostring(categoryKey).." is an invalid configuration option category. Please check the Vehicle Configuration Documentation.");
-				assert(supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." is an invalid configuration option. Please check the Vehicle Configuration Documentation.");
-				if (type(supportedTypes[categoryKey][optionKey]) == "string") then
-					assert(type(optionValue) == supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be a "..tostring(supportedTypes[categoryKey][optionKey])..". Please check the Vehicle Configuration Documentation.");
-				elseif (type(supportedTypes[categoryKey][optionKey]) == "table") then
-					local typeIsSupported = false;
-					for _, supportedType in pairs(supportedTypes[categoryKey][optionKey]) do
-						if (type(optionValue) == supportedType) then
-							typeIsSupported = true;
-							break;
+				
+				--Handle special _any ignore values to ignore any keys of a given type
+				local continueChecks = true;
+				if (ignoredKeys[categoryKey] ~= nil and ignoredKeys[categoryKey]._any ~= nil) then
+					for _, ignoredKeyType in ipairs(ignoredKeys[categoryKey]._any) do
+						if (type(optionKey) == ignoredKeyType) then
+							continueChecks = false;
 						end
 					end
-					assert(typeIsSupported, "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be one of the following: "..tostring(table.concat(supportedTypes[categoryKey][optionKey], ", "))..". Please check the Vehicle Configuration Documentation.");
+				end
+				
+				if (continueChecks) then
+					assert(supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." is an invalid configuration option. Please check the Vehicle Configuration Documentation.");
+					if (type(supportedTypes[categoryKey][optionKey]) == "string") then
+						assert(type(optionValue) == supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be a "..tostring(supportedTypes[categoryKey][optionKey])..". Please check the Vehicle Configuration Documentation.");
+					elseif (type(supportedTypes[categoryKey][optionKey]) == "table") then
+						local typeIsSupported = false;
+						for _, supportedType in pairs(supportedTypes[categoryKey][optionKey]) do
+							if (type(optionValue) == supportedType) then
+								typeIsSupported = true;
+								break;
+							end
+						end
+						assert(typeIsSupported, "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be one of the following: "..tostring(table.concat(supportedTypes[categoryKey][optionKey], ", "))..". Please check the Vehicle Configuration Documentation.");
+					end
 				end
 			end
 		end
 	end
-	
-	return vehicle;
 end
 
 function VehicleFramework.createSuspensionSprites(vehicle)
@@ -416,7 +451,6 @@ function VehicleFramework.createSuspensionSprites(vehicle)
 			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
 			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
 			vehicle.suspension.objects[i].Team = vehicle.general.team;
-			MovableMan:AddParticle(vehicle.suspension.objects[i]);
 		end
 	end
 end
@@ -464,7 +498,6 @@ function VehicleFramework.createWheels(self, vehicle)
 			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
 			vehicle.wheel.objects[i].IgnoresTeamHits = vehicle.general.forceWheelHorizontalLocking;
-			MovableMan:AddParticle(vehicle.wheel.objects[i]);
 		end
 		
 		vehicle.suspension.longest = vehicle.suspension.length[i].max > vehicle.suspension.longest.max and vehicle.suspension.length[i] or vehicle.suspension.longest;
@@ -524,8 +557,6 @@ function VehicleFramework.createTensioners(self, vehicle)
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
-				
-				MovableMan:AddParticle(vehicle.tensioner.objects[i]);
 			end
 		end
 		VehicleFramework.updateTensioners(self, vehicle);
@@ -550,7 +581,6 @@ function VehicleFramework.createTrack(self, vehicle)
 				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
 				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
 				vehicle.track.objects[i].IgnoresTeamHits = true;
-				MovableMan:AddParticle(vehicle.track.objects[i]);
 			end
 		end
 	end
@@ -688,6 +718,32 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 	end
 end
 
+function VehicleFramework.addNextLayer(vehicle)
+	local layer = vehicle.layer[vehicle.layer.current];
+	
+	if (type(layer) == "userdata") then
+		MovableMan:AddParticle(layer);
+	elseif(type(layer) == "table") then
+		for layerObjectIndex, layerObject in ipairs(layer) do
+			assert(type(layerObject) == "userdata", "Layer "..tostring(vehicle.layer.current).."'s entry with the index "..tostring(layerObjectKey).." is a "..tostring(type(layerObject)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+			if (layerObject.ClassName == "AHuman" or layerObject.ClassName == "ACrab" or layerObject.ClassName == "ACRocket" or layerObject.ClassName == "ACDropship" or layerObject.ClassName == "ACraft" or layerObject.ClassName == "Actor") then
+				MovableMan:AddActor(layerObject);
+			else
+				MovableMan:AddParticle(layerObject);
+			end
+		end
+	elseif(type(layer) == "string") then
+		for _, layerObject in ipairs(vehicle[layer].objects) do
+			MovableMan:AddParticle(layerObject);
+		end
+	else
+		error("Layer "..tostring(vehicle.layer.current).." is a "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+	end
+	
+	vehicle.layer.allLayersAdded = vehicle.layer.current == #vehicle.layer;
+	vehicle.layer.current = vehicle.layer.current + 1;
+end
+
 function VehicleFramework.deleteVehicle(vehicle)
 	if (vehicle) then
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
@@ -728,28 +784,36 @@ function VehicleFramework.updateVehicle(self, vehicle)
 	end
 	
 	if (vehicle) then
-		if (vehicle.general.fullyCreated ~= true) then
-			return VehicleFramework.createVehicle(self, vehicle);
-		end
-
-		local destroyed = VehicleFramework.updateDestruction(self, vehicle);
-		
-		if (not destroyed) then
-			VehicleFramework.updateAltitudeChecks(vehicle);
+		if (vehicle.layer.allLayersAdded) then
+			local destroyed = VehicleFramework.updateDestruction(self, vehicle);
 			
-			VehicleFramework.updateThrottle(vehicle);
-			
-			VehicleFramework.updateWheels(vehicle);
-			
-			VehicleFramework.updateSprings(vehicle);
-			
-			VehicleFramework.updateTensioners(self, vehicle);
-			
-			VehicleFramework.updateTrack(self, vehicle);
-			
-			VehicleFramework.updateChassis(self, vehicle);
-			
-			VehicleFramework.updateSuspension(self, vehicle);
+			if (not destroyed) then
+				VehicleFramework.updateAltitudeChecks(vehicle);
+				
+				VehicleFramework.updateThrottle(vehicle);
+				
+				VehicleFramework.updateWheels(vehicle);
+				
+				VehicleFramework.updateSprings(vehicle);
+				
+				VehicleFramework.updateTensioners(self, vehicle);
+				
+				VehicleFramework.updateTrack(self, vehicle);
+				
+				VehicleFramework.updateChassis(self, vehicle);
+				
+				VehicleFramework.updateSuspension(self, vehicle);
+			end
+		else
+			if (vehicle.layer.addLayerTimer:IsPastSimMS(vehicle.layer.addLayerInterval)) then
+				VehicleFramework.addNextLayer(vehicle);
+				vehicle.layer.addLayerTimer:Reset();
+				
+				if (vehicle.layer.allLayersAdded) then
+					vehicle.layer.addLayerTimer = nil;
+					vehicle.layer.addLayerInterval = nil;
+				end
+			end
 		end
 		
 		vehicle.general.previousPos:SetXY(vehicle.general.pos.X, vehicle.general.pos.Y);
@@ -816,6 +880,7 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 			vehicle.general.distanceFallen = 0;
 		end
 	end
+	
 end
 
 function VehicleFramework.updateThrottle(vehicle)

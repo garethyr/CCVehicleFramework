@@ -264,3 +264,26 @@ overturnedLimit:
 	2. Supported Types - number
 	3. Purpose - This determines how many seconds the Vehicle can be upside down for before detonating
 	4. Default - 10
+	
+-------------------------------
+Layer Configuration (OPTIONAL):
+-------------------------------
+addLayerInterval:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purose - This determines how long the Vehicle will wait between adding each layer
+	4. Default - 10 MS
+	
+********************
+Custom Layer Setup:
+Everything below is here for advanced users only, and not recommended unless you want to do a lot of work! It should be ignored unless you want to add your own layers through the framework (to avoid layering issues) in which case every part of it is necessary.
+
+To customize layers, add a new numerical entry into vehicle.layer. If you set your own layers, it will OVERWRITE the default layer configuration.
+Each layer can be a single object or a table of objects with numerical indices (i.e. layer 1 could be a single object or a table like {object1, object2})
+
+In addition to custom layers you add, you MUST have the following strings as layer entries, their default order is:
+suspension (only if you're using SPRITE based suspensionVisuals)
+wheel
+tensioner (only if you're using tensioners on your vehicle)
+track (only if you're using tracks on your vehicle)
+********************

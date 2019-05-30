@@ -131,16 +131,16 @@ visualsConfig:
 --------------------
 Wheel Configuration:
 --------------------
+count:
+	1. Optional - No
+	2. Supported Types - number
+	3. Purpose - This determines how many wheels the Vehicle should have.
+
 spacing:
 	1. Optional - Yes
 	2. Supported Types - number
 	3. Purpose - This determines the distance between each wheel.
 	4. Default - the diameter of the wheel object (i.e. the length/width, not the diagonal length) * 1.15, rounded up
-
-count:
-	1. Optional - No
-	2. Supported Types - number
-	3. Purpose - This determines how many wheels the Vehicle should have.
 
 objectName:
 	1. Optional - Yes
@@ -157,18 +157,6 @@ objectRTE:
 -----------------------------------
 Tensioner Configuration (OPTIONAL):
 -----------------------------------
-spacing:
-	1. Optional - Yes
-	2. Supported Types - number
-	3. Purpose - This determines the distance between each tensioner.
-	4. wheel spacing
-
-count:
-	1. Optional - Yes
-	2. Supported Types - number
-	3. Purpose - This determines the number of tensioners the Vehicle should have.
-	4. Default - wheel count + 1
-	
 offsetLength:
 	1. Optional - No
 	2. Supported Types - number or table. The table can either have an entry for each tensioner, or an entry for the strings "inside" and "outside".
@@ -176,6 +164,18 @@ offsetLength:
 		A number will make all tensioners be the same distance below the chassis.
 		A table with number keys allows you to set the distance below the chassis for each tensioner individually. It must contain a distance for EVERY tensioner.
 		A table with string keys "inside" and "outside" will let you set two values for tensioner's distance below the chassis - outside sets it for the first and last tensioners and inside sets it for all the tensioners in between.
+
+count:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purpose - This determines the number of tensioners the Vehicle should have.
+	4. Default - wheel count + 1
+
+spacing:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purpose - This determines the distance between each tensioner.
+	4. wheel spacing
 
 objectName:
 	1. Optional - Yes

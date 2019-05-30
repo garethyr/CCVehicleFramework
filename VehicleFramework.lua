@@ -227,12 +227,12 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	end
 	
 	--Wheel
+	assert(vehicle.wheel.count ~= nil, "You must specify the number of wheels for your Vehicle. Please check the Vehicle Configuration Documentation.")
+	
 	vehicle.wheel.spacing = vehicle.wheel.spacing or VehicleFramework.AUTO_GENERATE;
 	if (type(vehicle.wheel.spacing) == "number") then
 		vehicle.wheel.spacing = Clamp(vehicle.wheel.spacing, 0, 1000000000);
 	end
-	
-	assert(vehicle.wheel.count ~= nil, "You must specify the number of wheels for your Vehicle. Please check the Vehicle Configuration Documentation.")
 	
 	vehicle.wheel.objectName = vehicle.wheel.objectName or self.PresetName.." Wheel";
 	
@@ -240,14 +240,6 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	
 	--Tensioner
 	if (vehicle.tensioner ~= nil) then
-		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
-		if (type(vehicle.tensioner.spacing) == "number") then
-			vehicle.tensioner.spacing = Clamp(vehicle.tensioner.spacing, 0, 1000000000);
-		end
-		
-		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
-		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
-	
 		assert(vehicle.tensioner.offsetLength, "You must specify an offsetLength for your tensioners. Please check the Vehicle Configuration Documentation.");
 		if (type(vehicle.tensioner.offsetLength) == "number") then
 			local offsetLength = vehicle.tensioner.offsetLength;
@@ -274,6 +266,13 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 			else
 				error("You have used a table for your tensioner displacements, but have not populated it properly. Please check the Vehicle Configuration Documentation.");
 			end
+		end
+		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
+		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
+		
+		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
+		if (type(vehicle.tensioner.spacing) == "number") then
+			vehicle.tensioner.spacing = Clamp(vehicle.tensioner.spacing, 0, 1000000000);
 		end
 		
 		vehicle.tensioner.objectName = vehicle.tensioner.objectName or self.PresetName.." Tensioner";

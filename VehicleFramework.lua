@@ -338,12 +338,15 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 			assert(value == true, "Your layer config is missing the necessary layer entry for "..necessaryLayer..". Please check the Vehicle Configuration Documentation.");
 		end
 	else
-		table.insert(vehicle.layer, "suspension");
+		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+			table.insert(vehicle.layer, "suspension");
+		end
 		table.insert(vehicle.layer, "wheel");
-		table.insert(vehicle.layer, "tensioner");
-		table.insert(vehicle.layer, "track");
-		if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.SPRITE) then
-			table.remove(vehicle.layer, 1);
+		if (vehicle.tensioner ~= nil) then
+			table.insert(vehicle.layer, "tensioner");
+		end
+		if (vehicle.track ~= nil) then
+			table.insert(vehicle.layer, "track");
 		end
 	end
 	

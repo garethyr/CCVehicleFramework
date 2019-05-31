@@ -240,6 +240,9 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	
 	--Tensioner
 	if (vehicle.tensioner ~= nil) then
+		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
+		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
+		
 		assert(vehicle.tensioner.offsetLength, "You must specify an offsetLength for your tensioners. Please check the Vehicle Configuration Documentation.");
 		if (type(vehicle.tensioner.offsetLength) == "number") then
 			local offsetLength = vehicle.tensioner.offsetLength;
@@ -267,8 +270,6 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 				error("You have used a table for your tensioner displacements, but have not populated it properly. Please check the Vehicle Configuration Documentation.");
 			end
 		end
-		vehicle.tensioner.count = vehicle.tensioner.count or vehicle.wheel.count + 1;
-		vehicle.tensioner.count = Clamp(vehicle.tensioner.count, 0, 1000000000);
 		
 		vehicle.tensioner.spacing = vehicle.tensioner.spacing or vehicle.wheel.spacing;
 		if (type(vehicle.tensioner.spacing) == "number") then

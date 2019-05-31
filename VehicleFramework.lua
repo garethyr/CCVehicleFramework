@@ -726,35 +726,23 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 	end
 end
 
-function VehicleFramework.addNextLayer(vehicle)
-	vehicle.layer.allObjectsAddedForCurrentLayer = true;
-	
-	local layer = vehicle.layer[vehicle.layer.current];
-	local addedObjectCount = 1;
-	
-	if (type(layer) == "userdata") then
-		MovableMan:AddParticle(layer);
-	elseif(type(layer) == "table") then
-		for layerObjectIndex, layerObject in ipairs(layer) do
-			assert(type(layerObject) == "userdata", "Layer "..tostring(vehicle.layer.current).."'s entry with the index "..tostring(layerObjectKey).." is a "..tostring(type(layerObject)).." which is not valid. Please check the Vehicle Configuration Documentation.");
-			if (layerObject.ClassName == "AHuman" or layerObject.ClassName == "ACrab" or layerObject.ClassName == "ACRocket" or layerObject.ClassName == "ACDropship" or layerObject.ClassName == "ACraft" or layerObject.ClassName == "Actor") then
-				MovableMan:AddActor(layerObject);
-			else
-				MovableMan:AddParticle(layerObject);
-			end
-			
-			if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
-				addedObjectCount = addedObjectCount + 1;
-				if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
-					vehicle.layer.allObjectsAddedForCurrentLayer = false;
-					break;
+function VehicleFramework.updateLayers(vehicle)
+	if (vehicle.layer.addLayerTimer:IsPastSimMS(vehicle.layer.addLayerInterval)) then
+		vehicle.layer.allObjectsAddedForCurrentLayer = true;
+		
+		local layer = vehicle.layer[vehicle.layer.current];
+		local addedObjectCount = 0;
+		
+		if (type(layer) == "userdata") then
+			MovableMan:AddParticle(layer);
+		elseif(type(layer) == "table") then
+			for layerObjectIndex, layerObject in ipairs(layer) do
+				assert(type(layerObject) == "userdata", "Layer "..tostring(vehicle.layer.current).."'s entry with the index "..tostring(layerObjectKey).." is a "..tostring(type(layerObject)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+				if (layerObject.ClassName == "AHuman" or layerObject.ClassName == "ACrab" or layerObject.ClassName == "ACRocket" or layerObject.ClassName == "ACDropship" or layerObject.ClassName == "ACraft" or layerObject.ClassName == "Actor") then
+					MovableMan:AddActor(layerObject);
+				else
+					MovableMan:AddParticle(layerObject);
 				end
-			end
-		end
-	elseif(type(layer) == "string") then
-		for _, layerObject in ipairs(vehicle[layer].objects) do
-			if (not MovableMan:ValidMO(layerObject)) then
-				MovableMan:AddParticle(layerObject);
 				
 				if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
 					addedObjectCount = addedObjectCount + 1;
@@ -764,13 +752,34 @@ function VehicleFramework.addNextLayer(vehicle)
 					end
 				end
 			end
+		elseif(type(layer) == "string") then
+			for _, layerObject in ipairs(vehicle[layer].objects) do
+				if (not MovableMan:ValidMO(layerObject)) then
+					MovableMan:AddParticle(layerObject);
+					
+					if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
+						addedObjectCount = addedObjectCount + 1;
+						if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
+							vehicle.layer.allObjectsAddedForCurrentLayer = false;
+							break;
+						end
+					end
+				end
+			end
+		else
+			error("Layer "..tostring(vehicle.layer.current).." is of type "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
 		end
-	else
-		error("Layer "..tostring(vehicle.layer.current).." is of type "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+		
+		vehicle.layer.allLayersAdded = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current == #vehicle.layer;
+		vehicle.layer.current = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current + 1 or vehicle.layer.current;
+		
+		if (vehicle.layer.allLayersAdded) then
+			vehicle.layer.addLayerTimer = nil;
+			vehicle.layer.addLayerInterval = nil;
+		else
+			vehicle.layer.addLayerTimer:Reset();
+		end
 	end
-	
-	vehicle.layer.allLayersAdded = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current == #vehicle.layer;
-	vehicle.layer.current = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current + 1 or vehicle.layer.current;
 end
 
 function VehicleFramework.deleteVehicle(vehicle)
@@ -813,36 +822,28 @@ function VehicleFramework.updateVehicle(self, vehicle)
 	end
 	
 	if (vehicle) then
-		if (vehicle.layer.allLayersAdded) then
-			local destroyed = VehicleFramework.updateDestruction(self, vehicle);
+		if (not vehicle.layer.allLayersAdded) then
+			VehicleFramework.updateLayers(vehicle);
+		end
+		
+		local destroyed = VehicleFramework.updateDestruction(self, vehicle);
+		
+		if (not destroyed) then
+			VehicleFramework.updateAltitudeChecks(vehicle);
 			
-			if (not destroyed) then
-				VehicleFramework.updateAltitudeChecks(vehicle);
-				
-				VehicleFramework.updateThrottle(vehicle);
-				
-				VehicleFramework.updateWheels(vehicle);
-				
-				VehicleFramework.updateSprings(vehicle);
-				
-				VehicleFramework.updateTensioners(self, vehicle);
-				
-				VehicleFramework.updateTrack(self, vehicle);
-				
-				VehicleFramework.updateChassis(self, vehicle);
-				
-				VehicleFramework.updateSuspension(self, vehicle);
-			end
-		else
-			if (vehicle.layer.addLayerTimer:IsPastSimMS(vehicle.layer.addLayerInterval)) then
-				VehicleFramework.addNextLayer(vehicle);
-				vehicle.layer.addLayerTimer:Reset();
-				
-				if (vehicle.layer.allLayersAdded) then
-					vehicle.layer.addLayerTimer = nil;
-					vehicle.layer.addLayerInterval = nil;
-				end
-			end
+			VehicleFramework.updateThrottle(vehicle);
+			
+			VehicleFramework.updateWheels(vehicle);
+			
+			VehicleFramework.updateSprings(vehicle);
+			
+			VehicleFramework.updateTensioners(self, vehicle);
+			
+			VehicleFramework.updateTrack(self, vehicle);
+			
+			VehicleFramework.updateChassis(self, vehicle);
+			
+			VehicleFramework.updateSuspension(self, vehicle);
 		end
 		
 		vehicle.general.previousPos:SetXY(vehicle.general.pos.X, vehicle.general.pos.Y);

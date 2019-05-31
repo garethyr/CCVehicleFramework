@@ -659,7 +659,7 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 		else
 			remainderDistance = (inflection.trackDistance.Magnitude%vehicle.track.size.X)/vehicle.track.size.X;
 			extraFillerTrack = remainderDistance > numberOfTracks * 0.06;
-			if (vehicle.showDebug) then
+			if (vehicle.general.showDebug) then
 				if (extraFillerTrack == true) then
 					print("Adding extra filler track for inflection "..tostring(i));
 				else
@@ -687,20 +687,20 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 					table.insert(vehicle.track.trackEnds, #vehicle.track.unrotatedOffsets);
 				end
 			elseif (j == numberOfTracks) then
-				if (showDebug) then
-					print("direction difference: "..tostring(math.abs(inflection.next.trackDirection - inflection.trackDirection))..", distance magnitude: "..tostring(SceneMan:ShortestDistance(inflection.trackEnd, inflection.next.trackStart, SceneMan.SceneWrapsX).Magnitude));
+				if (vehicle.general.showDebug) then
+					--print("direction difference: "..tostring(math.abs(inflection.next.trackDirection - inflection.trackDirection))..", distance magnitude: "..tostring(SceneMan:ShortestDistance(inflection.trackEnd, inflection.next.trackStart, SceneMan.SceneWrapsX).Magnitude));
 				end
 				if (math.abs(inflection.next.trackDirection - inflection.trackDirection)  > (30 * math.pi/180) and SceneMan:ShortestDistance(inflection.trackEnd, inflection.next.trackStart, SceneMan.SceneWrapsX).Magnitude > vehicle.track.size.Magnitude * 0.1) then
 					table.insert(vehicle.track.unrotatedOffsets, inflection.trackEnd);
 					table.insert(vehicle.track.trackEnds, #vehicle.track.unrotatedOffsets);
 					vehicle.track.skippedEnds[i] = false;
-					if (showDebug) then
+					if (vehicle.general.showDebug) then
 						print("Adding end track for inflection "..tostring(i));
 					end
 				else
 					numberOfTracks = numberOfTracks - 1;
 					vehicle.track.skippedEnds[i] = true;
-					if (showDebug) then
+					if (vehicle.general.showDebug) then
 						print("Not adding end track for inflection "..tostring(i));
 					end
 					break;
@@ -866,7 +866,7 @@ function VehicleFramework.updateDestruction(self, vehicle)
 		end
 		
 		if (vehicle.destruction.overturnedCounter > vehicle.destruction.overturnedLimit) then
-			if (vehicle.showDebug) then
+			if (vehicle.general.showDebug) then
 				print ("Vehicle was overturned and went boom cause it hit limit "..tostring(vehicle.destruction.overturnedLimit));
 			end
 			self:GibThis();

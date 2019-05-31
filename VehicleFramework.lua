@@ -128,6 +128,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	--LAYER SETTINGS--
 	------------------
 	vehicle.layer.current = 1;
+	vehicle.layer.allObjectsAddedForCurrentLayer = true;
 	vehicle.layer.allLayersAdded = false;
 	vehicle.layer.addLayerTimer = Timer();
 	
@@ -313,6 +314,9 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.layer.addLayerInterval = vehicle.layer.addLayerInterval or 10;
 	vehicle.layer.addLayerInterval = Clamp(vehicle.layer.addLayerInterval, 1, 1000000000);
 	
+	vehicle.layer.numberOfObjectsToAddPerInterval = vehicle.layer.numberOfObjectsToAddPerInterval or 0;
+	vehicle.layer.numberOfObjectsToAddPerInterval = Clamp(vehicle.layer.numberOfObjectsToAddPerInterval, 0, 1000000000);
+	
 	if (vehicle.layer[1] ~= nil) then
 		--If there's a custom layer config, ensure it has required layers
 		local necessaryLayers = {};
@@ -409,7 +413,8 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 			overturnedLimit = "number"
 		},
 		layer = {
-			addLayerInterval = "number"
+			addLayerInterval = "number",
+			numberOfObjectsToAddPerInterval = "number"
 		}
 	}
 	--Ensure everything is a real configuration option and has the correct type
@@ -722,7 +727,10 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 end
 
 function VehicleFramework.addNextLayer(vehicle)
+	vehicle.layer.allObjectsAddedForCurrentLayer = true;
+	
 	local layer = vehicle.layer[vehicle.layer.current];
+	local addedObjectCount = 1;
 	
 	if (type(layer) == "userdata") then
 		MovableMan:AddParticle(layer);
@@ -734,17 +742,35 @@ function VehicleFramework.addNextLayer(vehicle)
 			else
 				MovableMan:AddParticle(layerObject);
 			end
+			
+			if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
+				addedObjectCount = addedObjectCount + 1;
+				if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
+					vehicle.layer.allObjectsAddedForCurrentLayer = false;
+					break;
+				end
+			end
 		end
 	elseif(type(layer) == "string") then
 		for _, layerObject in ipairs(vehicle[layer].objects) do
-			MovableMan:AddParticle(layerObject);
+			if (not MovableMan:ValidMO(layerObject)) then
+				MovableMan:AddParticle(layerObject);
+				
+				if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
+					addedObjectCount = addedObjectCount + 1;
+					if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
+						vehicle.layer.allObjectsAddedForCurrentLayer = false;
+						break;
+					end
+				end
+			end
 		end
 	else
-		error("Layer "..tostring(vehicle.layer.current).." is a "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+		error("Layer "..tostring(vehicle.layer.current).." is of type "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
 	end
 	
-	vehicle.layer.allLayersAdded = vehicle.layer.current == #vehicle.layer;
-	vehicle.layer.current = vehicle.layer.current + 1;
+	vehicle.layer.allLayersAdded = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current == #vehicle.layer;
+	vehicle.layer.current = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current + 1 or vehicle.layer.current;
 end
 
 function VehicleFramework.deleteVehicle(vehicle)

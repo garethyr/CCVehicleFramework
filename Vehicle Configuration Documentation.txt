@@ -274,6 +274,12 @@ addLayerInterval:
 	3. Purose - This determines how long the Vehicle will wait between adding each layer
 	4. Default - 10 MS
 	
+numberOfObjectsToAddPerInterval:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purose - This determines how many objects will be added at a time for each layer, allowing you to add objects in batches or individually. Any number less than 1 will add the whole layer at once.
+	4. Default - 0 (i.e. all)
+	
 ********************
 Custom Layer Setup:
 Everything below is here for advanced users only, and not recommended unless you want to do a lot of work! It should be ignored unless you want to add your own layers through the framework (to avoid layering issues) in which case every part of it is necessary.

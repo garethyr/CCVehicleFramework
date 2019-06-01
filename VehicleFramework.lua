@@ -459,7 +459,7 @@ function VehicleFramework.createSuspensionSprites(vehicle)
 			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
 			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
 			vehicle.suspension.objects[i].Team = vehicle.general.team;
-			vehicle.suspension.objects[i].IsMissionCritical = true;
+			vehicle.suspension.objects[i].MissionCritical = true;
 		end
 	end
 end
@@ -507,7 +507,7 @@ function VehicleFramework.createWheels(self, vehicle)
 			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
 			vehicle.wheel.objects[i].IgnoresTeamHits = vehicle.general.forceWheelHorizontalLocking;
-			vehicle.wheel.objects[i].IsMissionCritical = true;
+			vehicle.wheel.objects[i].MissionCritical = true;
 		end
 		
 		vehicle.suspension.longest = vehicle.suspension.length[i].max > vehicle.suspension.longest.max and vehicle.suspension.length[i] or vehicle.suspension.longest;
@@ -567,7 +567,7 @@ function VehicleFramework.createTensioners(self, vehicle)
 				vehicle.tensioner.objects[i].Team = vehicle.general.team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
-				vehicle.tensioner.objects[i].IsMissionCritical = true;
+				vehicle.tensioner.objects[i].MissionCritical = true;
 			end
 		end
 		VehicleFramework.updateTensioners(self, vehicle);
@@ -592,7 +592,7 @@ function VehicleFramework.createTrack(self, vehicle)
 				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
 				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
 				vehicle.track.objects[i].IgnoresTeamHits = true;
-				vehicle.track.objects[i].IsMissionCritical = true;
+				vehicle.track.objects[i].MissionCritical = true;
 			end
 		end
 	end

@@ -4,7 +4,7 @@ VehicleFramework = {};
 
 --Enums and Constants
 VehicleFramework.AUTO_GENERATE = "autoGenerate";
-VehicleFramework.SuspensionVisualsType = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
+VehicleFramework.SuspensionVisualsType = {NONE = 1, SPRITE = 2, DRAWN = 3};
 VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2}
 
 function VehicleFramework.getVersion()
@@ -212,10 +212,10 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.suspension.wheelStiffnessModifier = Clamp(vehicle.suspension.wheelStiffnessModifier, 1, 1000000000);
 	end
 	
-	vehicle.suspension.visualsType = vehicle.suspension.visualsType or (vehicle.track ~= nil or vehicle.tensioner ~= nil) and VehicleFramework.SuspensionVisualsType.INVISIBLE or VehicleFramework.SuspensionVisualsType.DRAWN;
+	vehicle.suspension.visualsType = vehicle.suspension.visualsType or (vehicle.track ~= nil or vehicle.tensioner ~= nil) and VehicleFramework.SuspensionVisualsType.NONE or VehicleFramework.SuspensionVisualsType.DRAWN;
 	
 	vehicle.suspension.visualsConfig = vehicle.suspension.visualsConfig or {};
-	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.INVISIBLE) then
+	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.NONE) then
 		vehicle.suspension.visualsConfig = nil;
 	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 		vehicle.suspension.visualsConfig.objectName = vehicle.suspension.visualsConfig.objectName or self.PresetName.." Suspension";
@@ -1122,7 +1122,7 @@ function VehicleFramework.updateVisuals(self, vehicle)
 end
 
 function VehicleFramework.updateSuspensionVisuals(self, vehicle)
-	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
+	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.NONE) then
 		for i, spring in ipairs(vehicle.suspension.springs) do
 			vehicle.suspension.offsets.main[i] = spring.targetPos[1];
 			if (i ~= vehicle.wheel.count) then

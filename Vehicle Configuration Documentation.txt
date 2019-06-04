@@ -106,17 +106,17 @@ wheelStiffnessModifier:
 
 visualsType:
 	1. Optional - Yes
-	2. Supported Types - VehicleFramework.SuspensionVisualsType.INVISIBLE/SPRITE/DRAWN (or the numbers those enum values represent)
-	3. Purpose - This determines how the Vehicle's suspension is displayed, and what is needed for the visualsConfig. INVISIBLE means there is no display for the suspension, the other options are explained more below
-	4. Default - The default for this is determined by whether or not the Vehicle has tensioners and/or tracks. If it does, this will default to INVISIBLE, otherwise it will default to DRAWN.
+	2. Supported Types - VehicleFramework.SuspensionVisualsType.NONE/SPRITE/DRAWN (or the numbers those enum values represent)
+	3. Purpose - This determines how the Vehicle's suspension is displayed, and what is needed for the visualsConfig. NONE means there is no display for the suspension, the other options are explained more below
+	4. Default - The default for this is determined by whether or not the Vehicle has tensioners and/or tracks. If it does, this will default to NONE, otherwise it will default to DRAWN.
 	
 visualsConfig:
 	1. Optional - Yes
-	2. Supported Types - table values to support the suspension visualsType or nil if it's INVISIBLE. Those values are as follows:
-			INVISIBLE - This option does not need to be included
+	2. Supported Types - table values to support the suspension visualsType or nil if it's NONE. Those values are as follows:
+			NONE - This option does not need to be included
 			SPRITE - objectName - string or nil, objectRTE - string or nil
 			DRAWN - width - number, colourIndex - number between 0 and 255
-	3. Purpose - This allows you to provide necessary configuration details for the selected suspension visualsType, and can only be skipped for INVISIBLE or DRAWN visualsTypes. The purpose of these configuration values is described below:
+	3. Purpose - This allows you to provide necessary configuration details for the selected suspension visualsType, and can only be skipped for NONE or DRAWN visualsTypes. The purpose of these configuration values is described below:
 			SPRITE:
 				objectName - This determines what MOSRotating your suspension sprite will be using its PresetName. If no value is set it will use a default name (vehicleSuspension).
 				objectRTE - This determines what RTE to use for your wheel objects
@@ -124,7 +124,7 @@ visualsConfig:
 				width - This determines how many pixels wide the DRAWN suspension should be
 				colourIndex - This detrmines which colour from the game's palette the DRAWN suspension should use
 	4. Default - The default values for this change based on the visualsType being used. They are as follows:
-				INVISIBLE: This will be set to nil since it's not used.
+				NONE: This will be set to nil since it's not used.
 				SPRITE: objectName will default to the vehicle's PresetName with the string " Suspension" concatenated to the end and the objectRTE will default to the vehicle's RTE.
 				DRAWN: the width will default to 1/3rd of the size of the Vehicle's wheels and the colourIndex will default to 247 (a dark grey).
 

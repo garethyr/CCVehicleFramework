@@ -7,6 +7,10 @@ VehicleFramework.AUTO_GENERATE = "autoGenerate";
 VehicleFramework.SuspensionVisualsType = {INVISIBLE = 1, SPRITE = 2, DRAWN = 3};
 VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2}
 
+function VehicleFramework.getVersion()
+	return "0.9.1"
+end
+
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
 	
@@ -730,62 +734,6 @@ function VehicleFramework.calculateTrackOffsets(vehicle)
 	end
 end
 
-function VehicleFramework.updateLayers(vehicle)
-	if (vehicle.layer.addLayerTimer:IsPastSimMS(vehicle.layer.addLayerInterval)) then
-		vehicle.layer.allObjectsAddedForCurrentLayer = true;
-		
-		local layer = vehicle.layer[vehicle.layer.current];
-		local addedObjectCount = 0;
-		
-		if (type(layer) == "userdata") then
-			MovableMan:AddParticle(layer);
-		elseif(type(layer) == "table") then
-			for layerObjectIndex, layerObject in ipairs(layer) do
-				assert(type(layerObject) == "userdata", "Layer "..tostring(vehicle.layer.current).."'s entry with the index "..tostring(layerObjectKey).." is a "..tostring(type(layerObject)).." which is not valid. Please check the Vehicle Configuration Documentation.");
-				if (layerObject.ClassName == "AHuman" or layerObject.ClassName == "ACrab" or layerObject.ClassName == "ACRocket" or layerObject.ClassName == "ACDropship" or layerObject.ClassName == "ACraft" or layerObject.ClassName == "Actor") then
-					MovableMan:AddActor(layerObject);
-				else
-					MovableMan:AddParticle(layerObject);
-				end
-				
-				if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
-					addedObjectCount = addedObjectCount + 1;
-					if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
-						vehicle.layer.allObjectsAddedForCurrentLayer = false;
-						break;
-					end
-				end
-			end
-		elseif(type(layer) == "string") then
-			for _, layerObject in ipairs(vehicle[layer].objects) do
-				if (not MovableMan:ValidMO(layerObject)) then
-					MovableMan:AddParticle(layerObject);
-					
-					if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
-						addedObjectCount = addedObjectCount + 1;
-						if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
-							vehicle.layer.allObjectsAddedForCurrentLayer = false;
-							break;
-						end
-					end
-				end
-			end
-		else
-			error("Layer "..tostring(vehicle.layer.current).." is of type "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
-		end
-		
-		vehicle.layer.allLayersAdded = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current == #vehicle.layer;
-		vehicle.layer.current = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current + 1 or vehicle.layer.current;
-		
-		if (vehicle.layer.allLayersAdded) then
-			vehicle.layer.addLayerTimer = nil;
-			vehicle.layer.addLayerInterval = nil;
-		else
-			vehicle.layer.addLayerTimer:Reset();
-		end
-	end
-end
-
 function VehicleFramework.deleteVehicle(vehicle)
 	if (vehicle) then
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
@@ -847,7 +795,9 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.updateChassis(self, vehicle);
 			
-			VehicleFramework.updateSuspension(self, vehicle);
+			VehicleFramework.updateAudio(vehicle);
+			
+			VehicleFramework.updateVisuals(self, vehicle);
 		end
 		
 		vehicle.general.previousPos:SetXY(vehicle.general.pos.X, vehicle.general.pos.Y);
@@ -855,6 +805,62 @@ function VehicleFramework.updateVehicle(self, vehicle)
 	end
 	
 	return vehicle;
+end
+
+function VehicleFramework.updateLayers(vehicle)
+	if (vehicle.layer.addLayerTimer:IsPastSimMS(vehicle.layer.addLayerInterval)) then
+		vehicle.layer.allObjectsAddedForCurrentLayer = true;
+		
+		local layer = vehicle.layer[vehicle.layer.current];
+		local addedObjectCount = 0;
+		
+		if (type(layer) == "userdata") then
+			MovableMan:AddParticle(layer);
+		elseif(type(layer) == "table") then
+			for layerObjectIndex, layerObject in ipairs(layer) do
+				assert(type(layerObject) == "userdata", "Layer "..tostring(vehicle.layer.current).."'s entry with the index "..tostring(layerObjectKey).." is a "..tostring(type(layerObject)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+				if (layerObject.ClassName == "AHuman" or layerObject.ClassName == "ACrab" or layerObject.ClassName == "ACRocket" or layerObject.ClassName == "ACDropship" or layerObject.ClassName == "ACraft" or layerObject.ClassName == "Actor") then
+					MovableMan:AddActor(layerObject);
+				else
+					MovableMan:AddParticle(layerObject);
+				end
+				
+				if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
+					addedObjectCount = addedObjectCount + 1;
+					if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
+						vehicle.layer.allObjectsAddedForCurrentLayer = false;
+						break;
+					end
+				end
+			end
+		elseif(type(layer) == "string") then
+			for _, layerObject in ipairs(vehicle[layer].objects) do
+				if (not MovableMan:ValidMO(layerObject)) then
+					MovableMan:AddParticle(layerObject);
+					
+					if (vehicle.layer.numberOfObjectsToAddPerInterval > 0) then
+						addedObjectCount = addedObjectCount + 1;
+						if (addedObjectCount >= vehicle.layer.numberOfObjectsToAddPerInterval) then
+							vehicle.layer.allObjectsAddedForCurrentLayer = false;
+							break;
+						end
+					end
+				end
+			end
+		else
+			error("Layer "..tostring(vehicle.layer.current).." is of type "..tostring(type(layer)).." which is not valid. Please check the Vehicle Configuration Documentation.");
+		end
+		
+		vehicle.layer.allLayersAdded = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current == #vehicle.layer;
+		vehicle.layer.current = vehicle.layer.allObjectsAddedForCurrentLayer and vehicle.layer.current + 1 or vehicle.layer.current;
+		
+		if (vehicle.layer.allLayersAdded) then
+			vehicle.layer.addLayerTimer = nil;
+			vehicle.layer.addLayerInterval = nil;
+		else
+			vehicle.layer.addLayerTimer:Reset();
+		end
+	end
 end
 
 function VehicleFramework.updateDestruction(self, vehicle)
@@ -1068,7 +1074,7 @@ function VehicleFramework.updateChassis(self, vehicle)
 	elseif (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
 		desiredRotAngle = self.RotAngle - 1;
 	else
-		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos, vehicle.wheel.objects[vehicle.wheel.count].Pos, SceneMan.SceneWrapsX).AbsRadAngle;
+		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos - Vector(0, vehicle.suspension.length[1].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[vehicle.wheel.count].Pos - Vector(0, vehicle.suspension.length[vehicle.wheel.count].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
 	end
 	if (self.RotAngle < desiredRotAngle - vehicle.general.rotAngleCorrectionRate * 1.1) then
 		self.RotAngle = self.RotAngle + vehicle.general.rotAngleCorrectionRate;
@@ -1107,7 +1113,15 @@ function VehicleFramework.updateChassis(self, vehicle)
 	end
 end
 
-function VehicleFramework.updateSuspension(self, vehicle)
+function VehicleFramework.updateAudio(vehicle)
+	
+end
+
+function VehicleFramework.updateVisuals(self, vehicle)
+	VehicleFramework.updateSuspensionVisuals(self, vehicle);
+end
+
+function VehicleFramework.updateSuspensionVisuals(self, vehicle)
 	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.INVISIBLE) then
 		for i, spring in ipairs(vehicle.suspension.springs) do
 			vehicle.suspension.offsets.main[i] = spring.targetPos[1];
@@ -1117,27 +1131,26 @@ function VehicleFramework.updateSuspension(self, vehicle)
 		end
 
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
-			VehicleFramework.updateDrawnSuspension(self, vehicle);
+			for i, wheelObject in ipairs(vehicle.wheel.objects) do
+				VehicleFramework.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+				if (i ~= 1) then
+					VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+				end
+				if (i ~= vehicle.wheel.count) then
+					VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+				end
+			end
 		elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
-			VehicleFramework.updateSpriteSuspension(self, vehicle);
+			--VehicleFramework.updateSpriteSuspension(self, vehicle);
 		end
 	end
 end
 
-function VehicleFramework.updateDrawnSuspension(self, vehicle)
-	for i, wheelObject in ipairs(vehicle.wheel.objects) do
-		VehicleFramework.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
-		if (i ~= 1) then
-			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
-		end
-		if (i ~= vehicle.wheel.count) then
-			VehicleFramework.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
-		end
-	end
+--[[function VehicleFramework.updateDrawnSuspension(self, vehicle)
 end
 
 function VehicleFramework.updateSpriteSuspension(self, vehicle)
-end
+end--]]
 
 --[[
 	self.CenterPos = self.Pos + self:RotateOffset(Vector(0, -5))

@@ -176,7 +176,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.general.deceleration = vehicle.general.deceleration or vehicle.general.acceleration/20;
 	vehicle.general.deceleration = Clamp(vehicle.general.deceleration, 0, vehicle.general.maxThrottle);
 	
-	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.05;
+	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.04;
 	vehicle.general.rotAngleCorrectionRate = Clamp(vehicle.general.rotAngleCorrectionRate, 0, 2*math.pi);
 	
 	vehicle.general.maxErasableTerrainStrength = vehicle.general.maxErasableTerrainStrength or 100;

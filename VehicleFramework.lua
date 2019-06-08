@@ -1074,7 +1074,20 @@ function VehicleFramework.updateChassis(self, vehicle)
 	elseif (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
 		desiredRotAngle = self.RotAngle - 1;
 	else
-		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[1].Pos - Vector(0, vehicle.suspension.length[1].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[vehicle.wheel.count].Pos - Vector(0, vehicle.suspension.length[vehicle.wheel.count].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
+		local firstWheelOnGroundIndex, lastWheelOnGroundIndex;
+		
+		for i = 1, vehicle.wheel.count do
+			if (not vehicle.wheel.isInAir[i]) then
+				firstWheelOnGroundIndex = firstWheelOnGroundIndex or i;
+				lastWheelOnGroundIndex = i;
+			end
+		end
+		firstWheelOnGroundIndex = firstWheelOnGroundIndex or 1;
+		lastWheelOnGroundIndex = lastWheelOnGroundIndex or vehicle.wheel.count;
+	
+		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[firstWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[firstWheelOnGroundIndex].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[lastWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[lastWheelOnGroundIndex].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
+		
+		FrameMan:DrawTextPrimitive(self.AboveHUDPos, string.format("Pos: %s, diff%s: %s, diff%s: %s", self.Pos.RoundedY, firstWheelOnGroundIndex, (vehicle.wheel.objects[firstWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[firstWheelOnGroundIndex].normal):RadRotate(self.RotAngle)).RoundedY, lastWheelOnGroundIndex, (vehicle.wheel.objects[lastWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[lastWheelOnGroundIndex].normal):RadRotate(self.RotAngle)).RoundedY), false, 1); 
 	end
 	if (self.RotAngle < desiredRotAngle - vehicle.general.rotAngleCorrectionRate * 1.1) then
 		self.RotAngle = self.RotAngle + vehicle.general.rotAngleCorrectionRate;

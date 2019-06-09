@@ -70,8 +70,12 @@ showDebug:
 ----------------------
 Chassis Configuration:
 ----------------------
-There are currently no configuration options for the chassis.
-
+rotationAffectingWheels:
+	1. Optional - Yes
+	2. Supported Types - table of numbers for the first and last rotation affecting wheels
+	3. Purpose - This allows you to specify which wheels the chassis should match its rotation to, in case some wheels have unusual suspension lengths. It defaults to the first and last wheel
+	4. Default - {1, wheel count}
+	
 -------------------------
 Suspension Configuration:
 -------------------------

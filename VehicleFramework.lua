@@ -193,7 +193,17 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.general.showDebug = vehicle.general.showDebug == true and true or false;
 	
 	--Chassis
-	--Nothing here
+	vehicle.chassis.rotationAffectingWheels = vehicle.chassis.rotationAffectingWheels or {};
+	if (vehicle.chassis.rotationAffectingWheels[1] == nil) then
+		table.insert(vehicle.chassis.rotationAffectingWheels, 1);
+	end
+	--TODO properly support single wheel vehicles, this is commented out to avoid errors elsewhere
+	if (vehicle.chassis.rotationAffectingWheels[2] == nil) then-- and vehicle.wheel.count > 1) then
+		table.insert(vehicle.chassis.rotationAffectingWheels, vehicle.wheel.count);
+	end
+	assert(vehicle.wheel.count == 1 and #vehicle.chassis.rotationAffectingWheels == 1 or #vehicle.chassis.rotationAffectingWheels == 2, (vehicle.wheel.count == 1 and "You can only have 1 rotation affecting wheel" or "You can only have 2 rotation affecting wheels")..". Please check the Vehicle Configuration Documentation.");
+	assert(type(vehicle.chassis.rotationAffectingWheels[1]) == "number", "Rotation affecting wheel entries must be numbers. Please check the Vehicle Configuration Documentation.");
+	assert(type(vehicle.chassis.rotationAffectingWheels[2]) == "nil" or type(vehicle.chassis.rotationAffectingWheels[2]) == "number", "Rotation affecting wheel entries must be numbers. Please check the Vehicle Configuration Documentation.");
 	
 	--Suspension
 	vehicle.suspension.defaultLength = vehicle.suspension.defaultLength or VehicleFramework.AUTO_GENERATE;
@@ -379,6 +389,7 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 			showDebug = "boolean"
 		},
 		chassis = {
+			rotationAffectingWheels = "table"
 		},
 		suspension = {
 			defaultLength = {"table", "string"},
@@ -1074,20 +1085,7 @@ function VehicleFramework.updateChassis(self, vehicle)
 	elseif (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
 		desiredRotAngle = self.RotAngle - 1;
 	else
-		local firstWheelOnGroundIndex, lastWheelOnGroundIndex;
-		
-		for i = 1, vehicle.wheel.count do
-			if (not vehicle.wheel.isInAir[i]) then
-				firstWheelOnGroundIndex = firstWheelOnGroundIndex or i;
-				lastWheelOnGroundIndex = i;
-			end
-		end
-		firstWheelOnGroundIndex = firstWheelOnGroundIndex or 1;
-		lastWheelOnGroundIndex = lastWheelOnGroundIndex or vehicle.wheel.count;
-	
-		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[firstWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[firstWheelOnGroundIndex].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[lastWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[lastWheelOnGroundIndex].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
-		
-		FrameMan:DrawTextPrimitive(self.AboveHUDPos, string.format("Pos: %s, diff%s: %s, diff%s: %s", self.Pos.RoundedY, firstWheelOnGroundIndex, (vehicle.wheel.objects[firstWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[firstWheelOnGroundIndex].normal):RadRotate(self.RotAngle)).RoundedY, lastWheelOnGroundIndex, (vehicle.wheel.objects[lastWheelOnGroundIndex].Pos - Vector(0, vehicle.suspension.length[lastWheelOnGroundIndex].normal):RadRotate(self.RotAngle)).RoundedY), false, 1); 
+		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[1]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[1]].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[2]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[2]].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
 	end
 	if (self.RotAngle < desiredRotAngle - vehicle.general.rotAngleCorrectionRate * 1.1) then
 		self.RotAngle = self.RotAngle + vehicle.general.rotAngleCorrectionRate;

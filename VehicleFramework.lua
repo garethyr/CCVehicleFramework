@@ -13,6 +13,7 @@ VehicleFramework.AUTO_GENERATE = "autoGenerate";
 ---------
 VehicleFramework.SuspensionVisualsType = {NONE = 1, SPRITE = 2, DRAWN = 3};
 VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2};
+VehicleFramework.EventType = {IS_DRIVING = 1, NOT_DRIVING = 2, CHANGED_DIRECTION = 3, IS_STUCK = 4, LANDED_ON_GROUND = 5, FIRED_WEAPON = 6, SUSPENSION_CHANGED_LENGTH = 7, SUSPENSION_REACHED_LIMIT = 8};
 
 --------------------
 --Static Functions--
@@ -39,6 +40,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.track = vehicle.track == true and {} or vehicle.track;
 	vehicle.destruction = vehicle.destruction or {};
 	vehicle.layer = vehicle.layer or {};
+	vehicle.events = vehicle.events or {};
 	
 	--------------------
 	--GENERAL SETTINGS--
@@ -124,6 +126,8 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.wheel.evenWheelCount = vehicle.wheel.count % 2 == 0;
 	vehicle.wheel.midWheel = vehicle.wheel.evenWheelCount and vehicle.wheel.count * 0.5 or math.ceil(vehicle.wheel.count * 0.5);
 	vehicle.wheel.isInAir = {};
+	vehicle.wheel.terrainBelowWheels = {};
+	vehicle.wheel.checkTerrainBelowWheelsTimer = vehicle.wheel.checkTerrainBelowWheels ~= false and Timer() or nil;
 	
 	-----------------------
 	--TENSIONER SETTINGS--
@@ -159,6 +163,9 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.destruction.overturnedCounter = 0;
 	
 	------------------
+	--EVENT SETTINGS--
+	------------------
+	
 	--LAYER SETTINGS--
 	------------------
 	vehicle.layer.current = 1;
@@ -400,6 +407,18 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	
 	vehicle.layer.numberOfObjectsToAddPerInterval = vehicle.layer.numberOfObjectsToAddPerInterval or 0;
 	vehicle.layer.numberOfObjectsToAddPerInterval = Clamp(vehicle.layer.numberOfObjectsToAddPerInterval, 0, 1000000000);
+	
+	--Events
+	for eventTypeKey, eventType in pairs(VehicleFramework.EventType) do
+		vehicle.events[eventType] = vehicle.events[eventType] or {};
+	end
+	for eventType, eventTable in ipairs(vehicle.events) do
+		assert(type(eventTable) == "table", "Custom event config for eventType "..tostring(eventType).." is a "..type(eventTable).." when it should be a table. Please check the Vehicle Configuration Documentation.");
+		for eventHandlerIndex, eventHandler in ipairs(eventTable) do
+			assert(type(eventFunction) == "function", "Custom event handler "..tostring(eventHandlerIndex).." for eventType "..tostring(eventType).." is a "..type(eventHandler).." when it should be a function. Please check the Vehicle Configuration Documentation.");
+		end
+	end
+	
 	return vehicle;
 end
 
@@ -464,6 +483,10 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 		layer = {
 			addLayerInterval = "number",
 			numberOfObjectsToAddPerInterval = "number"
+		},
+		events = {
+			_anyNumber = "table"
+		},
 		}
 	}
 	--Ensure everything is a real configuration option and has the correct type
@@ -857,6 +880,9 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.updateAudio(vehicle);
 			
+			VehicleFramework.updateEvents(vehicle);
+			
+			
 			VehicleFramework.updateVisuals(self, vehicle);
 		end
 		
@@ -1183,8 +1209,92 @@ function VehicleFramework.updateChassis(self, vehicle)
 	end
 end
 
-function VehicleFramework.updateAudio(vehicle)
+function VehicleFramework.updateEvents(vehicle)
+	local eventFired, callbackFunctionArguments;
 	
+	for eventType, callbacks in pairs(vehicle.events) do
+		eventFired = false;
+		callbackFunctionArguments = {};
+		
+		if (callbacks ~= nil and #callbacks > 0) then
+			if (eventType == VehicleFramework.EventType.IS_DRIVING) then
+				if (vehicle.general.isDriving) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, vehicle.general.throttle);
+					table.insert(callbackFunctionArguments, vehicle.general.maxThrottle);
+				end
+			elseif (eventType == VehicleFramework.EventType.NOT_DRIVING) then
+				if (not vehicle.general.isDriving) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, vehicle.general.throttle);
+					table.insert(callbackFunctionArguments, vehicle.general.maxThrottle);
+				end
+			elseif (eventType == VehicleFramework.EventType.CHANGED_DIRECTION) then
+				if (vehicle.self.HFlipped ~= vehicle.previous.hFlipped) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, vehicle.general.throttle);
+					table.insert(callbackFunctionArguments, vehicle.general.maxThrottle);
+					table.insert(callbackFunctionArguments, vehicle.wheel.terrainBelowWheels)
+				end
+			elseif (eventType == VehicleFramework.EventType.IS_STUCK) then
+				error("Vehicle EventType IS_STUCK is not yet supported, please contact Gacyr if you need it");
+			elseif (eventType == VehicleFramework.EventType.LANDED_ON_GROUND) then
+				if (not vehicle.general.isInAir and vehicle.general.distanceFallen > 0) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, vehicle.general.distanceFallen);
+				end
+			elseif (eventType == VehicleFramework.EventType.FIRED_WEAPON) then
+				if (vehicle.general.controller:IsState(Controller.WEAPON_FIRE)) then --TODO this should only trigger on each separate activation, i.e. using HDFirearm:IsActivated() and/or HDFirearm.FiredFrame
+					eventFired = true;
+				end
+			elseif (eventType == VehicleFramework.EventType.SUSPENSION_CHANGED_LENGTH) then
+				local suspensionLengthChanges, suspensionLengthsIncreasedOrDecreased, wheelsInAir, numberOfLengthsChanged = {}, {}, {}, 0;
+				local lengthChange;
+				
+				for springIndex, spring in ipairs(vehicle.suspension.springs) do
+					lengthChange = math.abs(spring.unrotatedDistances[2].rest.Magnitude - vehicle.previous.springDistanceFromRest[springIndex].Magnitude);
+					if (lengthChange >= 1) then
+						suspensionLengthChanges[springIndex] = lengthChange;
+						suspensionLengthsIncreasedOrDecreased[springIndex] = spring.unrotatedDistances[2].rest.Magnitude > vehicle.previous.springDistanceFromRest[springIndex].Magnitude;
+						wheelsInAir[springIndex] = vehicle.wheel.isInAir[springIndex];
+						numberOfLengthsChanged = numberOfLengthsChanged + 1;
+					end
+				end
+				
+				if (numberOfLengthsChanged > 0) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, suspensionLengthChanges);
+					table.insert(callbackFunctionArguments, suspensionLengthsIncreasedOrDecreased);
+					table.insert(callbackFunctionArguments, wheelsInAir);
+					table.insert(callbackFunctionArguments, numberOfLengthsChanged);
+				end
+			elseif (eventType == VehicleFramework.EventType.SUSPENSION_REACHED_LIMIT) then
+				local reachedMinLimit, reachedMaxLimit = {}, {};
+				
+				for springIndex, spring in ipairs(vehicle.suspension.springs) do
+					if (spring.unrotatedDistances[2].min.X <= -spring.minimumValuesForActions[SpringFramework.SpringActions.OUTSIDE_OF_CONFINES]) then
+						table.insert(reachedMinLimit, springIndex);
+					elseif (spring.unrotatedDistances[2].max.X >= spring.minimumValuesForActions[SpringFramework.SpringActions.OUTSIDE_OF_CONFINES]) then
+						table.insert(reachedMaxLimit, springIndex);
+					end
+				end
+				
+				if (#reachedMinLimit > 0 or #reachedMaxLimit > 0) then
+					eventFired = true;
+					table.insert(callbackFunctionArguments, reachedMinLimit);
+					table.insert(callbackFunctionArguments, reachedMaxLimit);
+				end
+			else
+				error("Callback table with "..tostring(#callbacks).." elements used invalid event type "..tostring(eventType)..". Please check the Vehicle Configuration Documentation.");
+			end
+		
+			if (eventFired) then
+				for _, callbackFunction in ipairs(callbacks) do
+					callbackFunction(vehicle, unpack(callbackFunctionArguments));
+				end
+			end
+		end
+	end
 end
 
 function VehicleFramework.updateVisuals(self, vehicle)

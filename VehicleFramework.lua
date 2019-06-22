@@ -1712,9 +1712,9 @@ function VehicleFramework.Audio.update(vehicle)
 					if (sound:IsPlaying()) then
 						sound:UpdateDistance(SceneMan:TargetDistanceScalar(vehicle.self.Pos, vehicle.general.playerScreens[playerNumber]));
 					elseif (forceStopSounds or not sound:IsPlaying()) then
-						--if (audioConfig.soundAlreadyPlayed) then
-						--	audioConfig.soundAlreadyPlayed = false;
-						--end
+						if (audioConfig.soundAlreadyPlayed and not audioConfig.topLevelTable.isStageTable) then
+							audioConfig.soundAlreadyPlayed = false;
+						end
 						soundOptionTable[playerNumber] = nil;
 					end
 				end
@@ -1860,7 +1860,6 @@ function VehicleFramework.Audio.doStopSoundActionFromEvent(audioConfig, vehicle,
 					end
 				end
 			end
-			print("Stop sound "..tostring(audioConfigToStopSoundsFor.mainActionOptions[1].filePathModifier));
 			break;
 		end
 	end

@@ -1,18 +1,34 @@
+require("BaseClassModifications");
 require("SpringFramework/SpringFramework");
 
 VehicleFramework = {};
 
---Enums and Constants
+-------------
+--Constants--
+-------------
 VehicleFramework.AUTO_GENERATE = "autoGenerate";
-VehicleFramework.SuspensionVisualsType = {NONE = 1, SPRITE = 2, DRAWN = 3};
-VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2}
 
+---------
+--Enums--
+---------
+VehicleFramework.SuspensionVisualsType = {NONE = 1, SPRITE = 2, DRAWN = 3};
+VehicleFramework.TrackAnchorType = {ALL = 1, FIRST_AND_LAST = 2};
+
+--------------------
+--Static Functions--
+--------------------
 function VehicleFramework.getVersion()
 	return "0.9.1"
 end
 
+-------------------------------------------------------------------------------------------------------------------------
+--*********************************************************************************************************************--
+----------------------------------------------------FRAMEWORK BEGINS!----------------------------------------------------
+--*********************************************************************************************************************--
+-------------------------------------------------------------------------------------------------------------------------
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
+	vehicle.self = self; --TODO integrate this properly, I'm so dumb I didn't think to do this ages ago
 	
 	--Initialize necessary configs if they don't exist
 	vehicle.general = vehicle.general or {};
@@ -27,17 +43,25 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	--------------------
 	--GENERAL SETTINGS--
 	--------------------
+	--Necessary setup before setting defaults and limits
 	vehicle.general.RTE = string.sub(self:GetModuleAndPresetName(), 1, string.find(self:GetModuleAndPresetName(), "/") - 1);
+	vehicle.general.humanPlayers = {};
+	for player = 0, ActivityMan:GetActivity().PlayerCount - 1 do
+		if (ActivityMan:GetActivity():PlayerHuman(player)) then
+			table.insert(vehicle.general.humanPlayers, player);
+		end
+	end
+	vehicle.general.playerScreens = {};
+	for _, player in ipairs(vehicle.general.humanPlayers) do
+		vehicle.general.playerScreens[player] = ActivityMan:GetActivity():ScreenOfPlayer(player);
+	end
 	
-	vehicle = VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
-	
+	VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
 	VehicleFramework.ensureVehicleConfigIsValid(vehicle);
 	
 	vehicle.general.team = self.Team;
 	vehicle.general.pos = self.Pos;
 	vehicle.general.vel = self.Vel;
-	vehicle.general.previousPos = Vector(vehicle.general.pos.X, vehicle.general.pos.Y);
-	vehicle.general.previousVel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y);
 	vehicle.general.controller = self:GetController();
 	vehicle.general.throttle = 0;
 	vehicle.general.isInAir = false;
@@ -46,6 +70,12 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	vehicle.general.resetDistanceFallenForGround = true;
 	vehicle.general.isDriving = false;
 	vehicle.general.isStronglyDecelerating = false;
+	
+	vehicle.previous = {};
+	vehicle.previous.pos = Vector(vehicle.general.pos.X, vehicle.general.pos.Y);
+	vehicle.previous.vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y);
+	vehicle.previous.hFlipped = self.HFlipped;
+	vehicle.previous.springDistanceFromRest = {};
 	
 	--------------------
 	--CHASSIS SETTINGS--
@@ -164,7 +194,7 @@ end
 function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	--General
 	vehicle.general.maxSpeed = vehicle.general.maxSpeed or vehicle.general.maxThrottle;
-	assert(vehicle.general.maxSpeed, "Only one of vehicle.general.maxSpeed vehicle.general.maxThrottle can be nil. Please check the Vehicle Configuration Documentation.");
+	assert(vehicle.general.maxSpeed, "Only one of vehicle.general.maxSpeed and vehicle.general.maxThrottle can be nil. Please check the Vehicle Configuration Documentation.");
 	vehicle.general.maxSpeed = Clamp(vehicle.general.maxSpeed, 0, 1000000000);
 	
 	vehicle.general.maxThrottle = vehicle.general.maxThrottle or vehicle.general.maxSpeed;
@@ -176,9 +206,6 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.general.deceleration = vehicle.general.deceleration or vehicle.general.acceleration/20;
 	vehicle.general.deceleration = Clamp(vehicle.general.deceleration, 0, vehicle.general.maxThrottle);
 	
-	vehicle.general.rotAngleCorrectionRate = vehicle.general.rotAngleCorrectionRate or 0.04;
-	vehicle.general.rotAngleCorrectionRate = Clamp(vehicle.general.rotAngleCorrectionRate, 0, 2*math.pi);
-	
 	vehicle.general.maxErasableTerrainStrength = vehicle.general.maxErasableTerrainStrength or 100;
 	vehicle.general.maxErasableTerrainStrength = Clamp(vehicle.general.maxErasableTerrainStrength, 0, 1000000000);
 	
@@ -186,13 +213,19 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.general.forceWheelHorizontalLocking = (vehicle.track ~= nil or vehicle.tensioner ~= nil) and true or false;
 	end
 	
-	if (vehicle.general.allowSlidingWhileStopped == nil) then
-		vehicle.general.allowSlidingWhileStopped = false;
-	end
+	vehicle.general.allowSlidingWhileStopped = vehicle.general.allowSlidingWhileStopped or false;
 	
-	vehicle.general.showDebug = vehicle.general.showDebug == true and true or false;
+	vehicle.general.checkTerrainBelowWheels = vehicle.general.checkTerrainBelowWheels == nil and 50 or vehicle.general.checkTerrainBelowWheels;
+	
+	vehicle.general.showDebug = vehicle.general.showDebug == nil and false or vehicle.general.showDebug;
 	
 	--Chassis
+	vehicle.chassis.rotAngleCorrectionRate = vehicle.chassis.rotAngleCorrectionRate or 0.04;
+	vehicle.chassis.rotAngleCorrectionRate = Clamp(vehicle.chassis.rotAngleCorrectionRate, 0, 2*math.pi);
+	
+	vehicle.chassis.rotAngleCorrectionRateInAir = vehicle.chassis.rotAngleCorrectionRateInAir or vehicle.chassis.rotAngleCorrectionRate;
+	vehicle.chassis.rotAngleCorrectionRateInAir = Clamp(vehicle.chassis.rotAngleCorrectionRateInAir, 0, 2*math.pi);
+	
 	vehicle.chassis.rotationAffectingWheels = vehicle.chassis.rotationAffectingWheels or {};
 	if (vehicle.chassis.rotationAffectingWheels[1] == nil) then
 		table.insert(vehicle.chassis.rotationAffectingWheels, 1);
@@ -201,9 +234,9 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	if (vehicle.chassis.rotationAffectingWheels[2] == nil) then-- and vehicle.wheel.count > 1) then
 		table.insert(vehicle.chassis.rotationAffectingWheels, vehicle.wheel.count);
 	end
-	assert(vehicle.wheel.count == 1 and #vehicle.chassis.rotationAffectingWheels == 1 or #vehicle.chassis.rotationAffectingWheels == 2, (vehicle.wheel.count == 1 and "You can only have 1 rotation affecting wheel" or "You can only have 2 rotation affecting wheels")..". Please check the Vehicle Configuration Documentation.");
-	assert(type(vehicle.chassis.rotationAffectingWheels[1]) == "number", "Rotation affecting wheel entries must be numbers. Please check the Vehicle Configuration Documentation.");
-	assert(type(vehicle.chassis.rotationAffectingWheels[2]) == "nil" or type(vehicle.chassis.rotationAffectingWheels[2]) == "number", "Rotation affecting wheel entries must be numbers. Please check the Vehicle Configuration Documentation.");
+	assert(vehicle.wheel.count == 1 and #vehicle.chassis.rotationAffectingWheels == 1 or #vehicle.chassis.rotationAffectingWheels == 2, (vehicle.wheel.count == 1 and "You can only have 1 entry in vehicle.chassis.rotationAffectingWheels" or "You can only have 2 entries in vehicle.chassis.rotationAffectingWheels")..". Please check the Vehicle Configuration Documentation.");
+	assert(type(vehicle.chassis.rotationAffectingWheels[1]) == "number", "vehicle.chassis.rotationAffectingWheels entries must be numbers. Please check the Vehicle Configuration Documentation.");
+	assert(type(vehicle.chassis.rotationAffectingWheels[2]) == "nil" or type(vehicle.chassis.rotationAffectingWheels[2]) == "number", "vehicle.chassis.rotationAffectingWheels must be numbers. Please check the Vehicle Configuration Documentation.");
 	
 	--Suspension
 	vehicle.suspension.defaultLength = vehicle.suspension.defaultLength or VehicleFramework.AUTO_GENERATE;
@@ -325,14 +358,8 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	vehicle.destruction.overturnedLimit = Clamp(vehicle.destruction.overturnedLimit, 1, 1000000000);
 	
 	--Layer
-	vehicle.layer.addLayerInterval = vehicle.layer.addLayerInterval or 10;
-	vehicle.layer.addLayerInterval = Clamp(vehicle.layer.addLayerInterval, 1, 1000000000);
-	
-	vehicle.layer.numberOfObjectsToAddPerInterval = vehicle.layer.numberOfObjectsToAddPerInterval or 0;
-	vehicle.layer.numberOfObjectsToAddPerInterval = Clamp(vehicle.layer.numberOfObjectsToAddPerInterval, 0, 1000000000);
-	
-	if (vehicle.layer[1] ~= nil) then
-		--If there's a custom layer config, ensure it has required layers
+	--If there's a custom layer config, ensure it has required layers
+	if (next(vehicle.layer) ~= nil) then
 		local necessaryLayers = {};
 		
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
@@ -368,13 +395,18 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		end
 	end
 	
+	vehicle.layer.addLayerInterval = vehicle.layer.addLayerInterval or 10;
+	vehicle.layer.addLayerInterval = Clamp(vehicle.layer.addLayerInterval, 1, 1000000000);
+	
+	vehicle.layer.numberOfObjectsToAddPerInterval = vehicle.layer.numberOfObjectsToAddPerInterval or 0;
+	vehicle.layer.numberOfObjectsToAddPerInterval = Clamp(vehicle.layer.numberOfObjectsToAddPerInterval, 0, 1000000000);
 	return vehicle;
 end
 
 function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 	local ignoredKeys = {
-		general = {RTE = true},
-		layer = {_any = {"number"}}
+		general = {RTE = true, humanPlayers = true, playerScreens = true},
+		layer = {_any = {"number"}},
 	};
 	local supportedTypes = {
 		general = {
@@ -382,13 +414,15 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 			maxThrottle = "number",
 			acceleration = "number",
 			deceleration = "number",
-			rotAngleCorrectionRate = "number",
 			maxErasableTerrainStrength = "number",
 			forceWheelHorizontalLocking = "boolean",
 			allowSlidingWhileStopped = "boolean",
+			checkTerrainBelowWheels = {"boolean", "number"},
 			showDebug = "boolean"
 		},
 		chassis = {
+			rotAngleCorrectionRate = "number",
+			rotAngleCorrectionRateInAir = "number",
 			rotationAffectingWheels = "table"
 		},
 		suspension = {
@@ -434,33 +468,44 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 	}
 	--Ensure everything is a real configuration option and has the correct type
 	for categoryKey, categoryTable in pairs(vehicle) do
-		for optionKey, optionValue in pairs(categoryTable) do
-			if (ignoredKeys[categoryKey] == nil or (ignoredKeys[categoryKey][optionKey] ~= true and ignoredKeys[categoryKey]._all ~= true)) then
-				assert(supportedTypes[categoryKey], "vehicle."..tostring(categoryKey).." is an invalid configuration option category. Please check the Vehicle Configuration Documentation.");
-				
-				--Handle special _any ignore values to ignore any keys of a given type
-				local continueChecks = true;
-				if (ignoredKeys[categoryKey] ~= nil and ignoredKeys[categoryKey]._any ~= nil) then
-					for _, ignoredKeyType in ipairs(ignoredKeys[categoryKey]._any) do
-						if (type(optionKey) == ignoredKeyType) then
-							continueChecks = false;
-						end
-					end
-				end
-				
-				if (continueChecks) then
-					assert(supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." is an invalid configuration option. Please check the Vehicle Configuration Documentation.");
-					if (type(supportedTypes[categoryKey][optionKey]) == "string") then
-						assert(type(optionValue) == supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be a "..tostring(supportedTypes[categoryKey][optionKey])..". Please check the Vehicle Configuration Documentation.");
-					elseif (type(supportedTypes[categoryKey][optionKey]) == "table") then
-						local typeIsSupported = false;
-						for _, supportedType in pairs(supportedTypes[categoryKey][optionKey]) do
-							if (type(optionValue) == supportedType) then
-								typeIsSupported = true;
-								break;
+		if (categoryKey ~= "self") then
+			for optionKey, optionValue in pairs(categoryTable) do
+				if (ignoredKeys[categoryKey] == nil or (ignoredKeys[categoryKey][optionKey] ~= true and ignoredKeys[categoryKey]._all ~= true)) then
+					assert(supportedTypes[categoryKey], "vehicle."..tostring(categoryKey).." is an invalid configuration option category. Please check the Vehicle Configuration Documentation.");
+					
+					--Handle special _any ignore values to ignore any keys of a given type
+					local continueChecks = true;
+					if (ignoredKeys[categoryKey] ~= nil and ignoredKeys[categoryKey]._any ~= nil) then
+						for _, ignoredKeyType in ipairs(ignoredKeys[categoryKey]._any) do
+							if (type(optionKey) == ignoredKeyType) then
+								continueChecks = false;
 							end
 						end
-						assert(typeIsSupported, "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be one of the following: "..tostring(table.concat(supportedTypes[categoryKey][optionKey], ", "))..". Please check the Vehicle Configuration Documentation.");
+					end
+					
+					if (continueChecks) then
+						for supportedOptionKey, _ in pairs(supportedTypes[categoryKey]) do
+							if (supportedOptionKey:find("_any") ~= nil) then
+								local dataType = supportedOptionKey:sub(string.len("_any") + 1, supportedOptionKey:len()):lower();
+								if (type(optionKey) == dataType) then
+									optionKey = supportedOptionKey;
+								end
+							end
+						end
+						
+						assert(supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." is an invalid configuration option. Please check the Vehicle Configuration Documentation.");
+						if (type(supportedTypes[categoryKey][optionKey]) == "string") then
+							assert(type(optionValue) == supportedTypes[categoryKey][optionKey], "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be a "..tostring(supportedTypes[categoryKey][optionKey]).." but is a "..tostring(type(optionValue))..". Please check the Vehicle Configuration Documentation.");
+						elseif (type(supportedTypes[categoryKey][optionKey]) == "table") then
+							local typeIsSupported = false;
+							for _, supportedType in pairs(supportedTypes[categoryKey][optionKey]) do
+								if (type(optionValue) == supportedType) then
+									typeIsSupported = true;
+									break;
+								end
+							end
+							assert(typeIsSupported, "vehicle."..tostring(categoryKey).."."..tostring(optionKey).." must be one of the following: "..tostring(table.concat(supportedTypes[categoryKey][optionKey], ", "))..". Please check the Vehicle Configuration Documentation.");
+						end
 					end
 				end
 			end
@@ -556,6 +601,8 @@ function VehicleFramework.createSprings(self, vehicle)
 			showDebug = vehicle.general.showDebug
 		}
 		vehicle.suspension.springs[i] = SpringFramework.create(self, vehicle.wheel.objects[i], springConfig);
+		
+		vehicle.previous.springDistanceFromRest[i] = Vector(vehicle.suspension.springs[i].unrotatedDistances[2].rest.X, vehicle.suspension.springs[i].unrotatedDistances[2].rest.Y);
 	end
 end
 
@@ -800,6 +847,8 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.updateSprings(vehicle);
 			
+			VehicleFramework.updateTerrainBelowWheels(vehicle);
+			
 			VehicleFramework.updateTensioners(self, vehicle);
 			
 			VehicleFramework.updateTrack(self, vehicle);
@@ -811,8 +860,7 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			VehicleFramework.updateVisuals(self, vehicle);
 		end
 		
-		vehicle.general.previousPos:SetXY(vehicle.general.pos.X, vehicle.general.pos.Y);
-		vehicle.general.previousVel:SetXY(vehicle.general.vel.X, vehicle.general.vel.Y);
+		VehicleFramework.updatePreviousValues(vehicle);
 	end
 	
 	return vehicle;
@@ -919,7 +967,7 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 	
 	if (vehicle.general.isInAir) then
 		if (vehicle.general.vel.Y > 0) then
-			vehicle.general.distanceFallen = vehicle.general.distanceFallen + SceneMan:ShortestDistance(vehicle.general.previousPos, vehicle.general.pos, SceneMan.SceneWrapsX).Y;
+			vehicle.general.distanceFallen = vehicle.general.distanceFallen + SceneMan:ShortestDistance(vehicle.previous.pos, vehicle.general.pos, SceneMan.SceneWrapsX).Y;
 			vehicle.general.resetDistanceFallenForGround = false;
 		else
 			vehicle.general.distanceFallen = 0;
@@ -935,17 +983,19 @@ function VehicleFramework.updateAltitudeChecks(vehicle)
 end
 
 function VehicleFramework.updateThrottle(vehicle)
-	vehicle.general.isDriving = true;
+	local isMovingLeft, isMovingRight = vehicle.general.controller:IsState(Controller.MOVE_LEFT), vehicle.general.controller:IsState(Controller.MOVE_RIGHT);
+	vehicle.general.isDriving = isMovingLeft or isMovingRight;
 	vehicle.general.movingOppositeToThrottle = false;
 	
-	if vehicle.general.controller:IsState(Controller.MOVE_LEFT) and vehicle.general.throttle < vehicle.general.maxThrottle then
-		vehicle.general.throttle = vehicle.general.throttle + vehicle.general.acceleration;
-		vehicle.general.movingOppositeToThrottle = vehicle.general.throttle < 0;
-	elseif vehicle.general.controller:IsState(Controller.MOVE_RIGHT) and vehicle.general.throttle > -vehicle.general.maxThrottle then
-		vehicle.general.throttle = vehicle.general.throttle - vehicle.general.acceleration;
-		vehicle.general.movingOppositeToThrottle = vehicle.general.throttle > 0;
+	if (vehicle.general.isDriving) then
+		if (isMovingLeft) then
+			vehicle.general.movingOppositeToThrottle = vehicle.general.throttle < 0;
+			vehicle.general.throttle = math.min(vehicle.general.throttle + vehicle.general.acceleration, vehicle.general.maxThrottle);
+		elseif (isMovingRight) then
+			vehicle.general.movingOppositeToThrottle = vehicle.general.throttle > 0;
+			vehicle.general.throttle = math.max(vehicle.general.throttle - vehicle.general.acceleration, -vehicle.general.maxThrottle);
+		end
 	else
-		vehicle.general.isDriving = false;
 		if (math.abs(vehicle.general.throttle) < vehicle.general.acceleration * 20) then
 			vehicle.general.isStronglyDecelerating = true;
 			vehicle.general.throttle = vehicle.general.throttle * (1 - vehicle.general.deceleration * 2);
@@ -974,7 +1024,7 @@ function VehicleFramework.updateWheels(vehicle)
 end
 
 function VehicleFramework.updateSprings(vehicle)
-	local wheelObject;
+	local wheelObject, forceTerrainCheckForWheels;
 	for i, spring in ipairs(vehicle.suspension.springs) do
 		wheelObject = vehicle.wheel.objects[i];
 		if (spring ~= nil) then
@@ -990,21 +1040,29 @@ function VehicleFramework.updateSprings(vehicle)
 			if (not spring.actionsPerformed[SpringFramework.SpringActions.APPLY_FORCES]) then
 				wheelObject:MoveOutOfTerrain(6); --TODO Consider doing this all the time
 				
-				if (vehicle.general.maxErasableTerrainStrength > 0 and vehicle.general.vel.Magnitude < 5 and math.abs(vehicle.general.throttle) > vehicle.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > vehicle.general.maxThrottle * 0.5) then
-					--Check terrain strength at the wheel's position and its 4 center edges
-					local erasableTerrain = {
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X - vehicle.wheel.size[i] * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X + vehicle.wheel.size[i] * 0.5, wheelObject.Pos.Y)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y - vehicle.wheel.size[i] * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil,
-						SceneMan:GetMaterialFromID(SceneMan:GetTerrMatter(wheelObject.Pos.X, wheelObject.Pos.Y + vehicle.wheel.size[i] * 0.5)).Strength <= vehicle.general.maxErasableTerrainStrength and true or nil
-					};
-					if (#erasableTerrain > 3) then
-						wheelObject:EraseFromTerrain();
-					end
+				if (vehicle.general.maxErasableTerrainStrength > 0 and vehicle.general.vel.Magnitude < vehicle.general.maxSpeed * 0.25 and math.abs(vehicle.general.throttle) > vehicle.general.maxThrottle * 0.75 and math.abs(wheelObject.AngularVel) > vehicle.general.maxThrottle * 0.5) then
+					forceTerrainCheckForWheels = true;
 				end
 			end
 		end
+	end
+	
+	if (forceTerrainCheckForWheels) then
+		VehicleFramework.updateTerrainBelowWheels(vehicle, true);
+		for wheelIndex, wheelObject in ipairs(vehicle.wheel.objects) do
+			if (SceneMan:GetMaterialFromID(vehicle.wheel.terrainBelowWheels[wheelIndex]).Strength <= vehicle.general.maxErasableTerrainStrength) then
+				wheelObject:EraseFromTerrain();
+			end
+		end
+	end
+end
+
+function VehicleFramework.updateTerrainBelowWheels(vehicle, forceUpdate)
+	if (forceUpdate == true or vehicle.general.checkTerrainBelowWheels == true or vehicle.wheel.checkTerrainBelowWheelsTimer:IsPastSimMS(vehicle.general.checkTerrainBelowWheels)) then
+		for i, wheelObject in ipairs(vehicle.wheel.objects) do
+			vehicle.wheel.terrainBelowWheels[i] = SceneMan:GetTerrMatter(wheelObject.Pos + Vector(0, vehicle.wheel.size[i] * 0.55):RadRotate(vehicle.self.RotAngle));
+		end
+		vehicle.wheel.checkTerrainBelowWheelsTimer:Reset();
 	end
 end
 
@@ -1087,14 +1145,15 @@ function VehicleFramework.updateChassis(self, vehicle)
 	else
 		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[1]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[1]].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[2]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[2]].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
 	end
-	if (self.RotAngle < desiredRotAngle - vehicle.general.rotAngleCorrectionRate * 1.1) then
-		self.RotAngle = self.RotAngle + vehicle.general.rotAngleCorrectionRate;
-	elseif (self.RotAngle > desiredRotAngle + vehicle.general.rotAngleCorrectionRate * 1.1) then
-		self.RotAngle = self.RotAngle - vehicle.general.rotAngleCorrectionRate;
+	local rotAngleCorrectionRateToUse = vehicle.general.isInAir and vehicle.chassis.rotAngleCorrectionRateInAir or vehicle.chassis.rotAngleCorrectionRate;
+	if (self.RotAngle < desiredRotAngle - rotAngleCorrectionRateToUse * 1.1) then
+		self.RotAngle = self.RotAngle + rotAngleCorrectionRateToUse;
+	elseif (self.RotAngle > desiredRotAngle + rotAngleCorrectionRateToUse * 1.1) then
+		self.RotAngle = self.RotAngle - rotAngleCorrectionRateToUse;
 	else
 		self.RotAngle = desiredRotAngle;
 	end
-		
+	
 	if (not vehicle.general.isInAir) then
 		self:MoveOutOfTerrain(6);
 		self.AngularVel = self.AngularVel * 0.5;
@@ -1112,7 +1171,7 @@ function VehicleFramework.updateChassis(self, vehicle)
 					
 					if (not vehicle.general.allowSlidingWhileStopped and self.Vel.Magnitude < 5 and math.abs(self.RotAngle) > (15 * math.pi/180)) then
 						self.Vel = Vector();
-						self.Pos = vehicle.general.previousPos;
+						self.Pos = vehicle.previous.pos;
 					end
 				end
 			else

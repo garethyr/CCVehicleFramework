@@ -37,12 +37,6 @@ deceleration:
 	3. Purpose - This determines how quickly the Vehicle decelerates when not actively moving
 	4. Default - acceleration/20
 
-rotAngleCorrectionRate:
-	1. Optional - Yes
-	2. Supported Types - number
-	3. Purpose - This determines how quickly the Vehicle tilts to line up with its wheels. Effectively the number of radians it will tilt in a frame, high values will make the Vehicle always line up exactly with its wheels.
-	4. Default - 0.04
-
 maxErasableTerrainStrength:
 	1. Optional - Yes
 	2. Supported Types - number
@@ -58,8 +52,14 @@ forceWheelHorizontalLocking:
 allowSlidingWhileStopped:
 	1. Optional - Yes
 	2. Supported Types - boolean
-	3. Purpose - This determines whether or not the vehicle will slide down hills when not actively moving against it. Modifying this on the fly would allow you to put in a handbrake/parked mode functionality.
+	3. Purpose - This determines whether or not the Vehicle will slide down hills when not actively moving against it. Modifying this on the fly would allow you to put in a handbrake/parked mode functionality.
 	4. Default - false
+	
+checkTerrainBelowWheels:
+	1. Optional - Yes
+	2. Supported Types - boolean, number
+	3. Purpose - This determines whether or not the Vehicle will regularly check the terrain matter below the wheels. Setting it to a number will stagger the check so it only occurs after that many milliseconds have passed. Setting it to false will make it not check, and setting it to true will make it recheck every frame, which is not recommended because of the overhead of running it often.
+	4. Default - 50 MS
 
 showDebug:
 	1. Optional - Yes
@@ -70,6 +70,18 @@ showDebug:
 ----------------------
 Chassis Configuration:
 ----------------------
+rotAngleCorrectionRate:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purpose - This determines how quickly the chassis tilts to line up with its wheels. Effectively the number of radians it will tilt in a frame, high values will make the Vehicle always line up exactly with its wheels.
+	4. Default - 0.04
+	
+rotAngleCorrectionRateInAir:
+	1. Optional - Yes
+	2. Supported Types - number
+	3. Purpose - This acts the same as rotAngleCorrectionRate but only applies when the Vehicle is in the air, allowing you to make it rotate at a different speed when in the air.
+	4. Default - rotAngleCorrectionRate
+	
 rotationAffectingWheels:
 	1. Optional - Yes
 	2. Supported Types - table of numbers for the first and last rotation affecting wheels

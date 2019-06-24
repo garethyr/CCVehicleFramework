@@ -562,8 +562,6 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 end
 
 function VehicleFramework.setCreationFunctionsForObjects(vehicle)
-	vehicle.general.allObjectsAreActors = true;
-	
 	local objectGroupsToSetupCreationFunctionsFor = {suspension = vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE, wheel = true, tensioner = vehicle.tensioner ~= nil, track = vehicle.track ~= nil}
 	local presetModuleId, preset;
 	
@@ -575,7 +573,6 @@ function VehicleFramework.setCreationFunctionsForObjects(vehicle)
 			for preset in PresetMan:GetDataModule(presetModuleId).Presets do
 				if (preset.PresetName == vehicle[objectGroup].objectName) then
 					vehicle[objectGroup].creationFunction = loadstring("return Create"..preset.ClassName.."(...)");
-					vehicle.general.allObjectsAreActors = vehicle.general.allObjectsAreActors and preset.ClassName == "Actor";
 					break;
 				end
 			end

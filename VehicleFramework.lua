@@ -1184,9 +1184,9 @@ function VehicleFramework.updateTrack(vehicle)
 			end
 			
 			
-			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
 			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - vehicle.self.RotAngle - vehicle.track.directions[i];
 			--local angleOffset = ((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi) - vehicle.self.RotAngle - vehicle.track.directions[i];
+			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
 			
 			--if (i == 8) then
 			--	print("i: "..tostring(i)..", angleBetweenPrevAndNext: "..tostring((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi)..", angleOffset: "..tostring(angleOffset)..", angleLimits: "..tostring(vehicle.track.maxRotationDeviation)..", clampedAngle: "..tostring(clampedAngle));

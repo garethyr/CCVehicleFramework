@@ -21,7 +21,7 @@ VehicleFramework.OperatorType = {EQUAL = "==", NOT_EQUAL = "~", LESS_THAN = "<",
 --Static Functions--
 --------------------
 function VehicleFramework.getVersion()
-	return "0.9.1"
+	return "0.9.2"
 end
 
 -------------------------------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ end
 -------------------------------------------------------------------------------------------------------------------------
 function VehicleFramework.createVehicle(self, vehicleConfig)
 	local vehicle = vehicleConfig;
-	vehicle.self = self; --TODO integrate this properly, I'm so dumb I didn't think to do this ages ago
+	vehicle.self = self;
 	
 	--Initialize necessary configs if they don't exist
 	vehicle.general = vehicle.general or {};
@@ -61,12 +61,13 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		vehicle.general.playerScreens[player] = ActivityMan:GetActivity():ScreenOfPlayer(player);
 	end
 	
-	VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle);
+	VehicleFramework.setCustomisationDefaultsAndLimits(vehicle);
 	VehicleFramework.ensureVehicleConfigIsValid(vehicle);
 	
-	vehicle.general.team = self.Team;
+	--TODO remove all these unnecessary assignments since can just use vehicle.self
 	vehicle.general.pos = self.Pos;
 	vehicle.general.vel = self.Vel;
+	
 	vehicle.general.controller = self:GetController();
 	vehicle.general.throttle = 0;
 	vehicle.general.isInAir = false;
@@ -196,7 +197,7 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		VehicleFramework.createSuspensionSprites(vehicle);
 	end
 	
-	VehicleFramework.createWheels(self, vehicle);
+	VehicleFramework.createWheels(vehicle);
 	
 	--Handle AUTO_GENERATE for vehicle.suspension.visualsConfig.widths
 	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
@@ -205,18 +206,18 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 		end
 	end
 	
-	VehicleFramework.createSprings(self, vehicle);
+	VehicleFramework.createSprings(vehicle);
 	
-	VehicleFramework.createTensioners(self, vehicle);
+	VehicleFramework.createTensioners(vehicle);
 	
-	VehicleFramework.createTrack(self, vehicle);
+	VehicleFramework.createTrack(vehicle);
 	
 	VehicleFramework.Audio.createSoundTablesAndTimersAndEvents(vehicle);
 	
 	return vehicle;
 end
 
-function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
+function VehicleFramework.setCustomisationDefaultsAndLimits(vehicle)
 	--General
 	vehicle.general.maxSpeed = vehicle.general.maxSpeed or vehicle.general.maxThrottle;
 	assert(vehicle.general.maxSpeed, "Only one of vehicle.general.maxSpeed and vehicle.general.maxThrottle can be nil. Please check the Vehicle Configuration Documentation.");
@@ -286,7 +287,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.NONE) then
 		vehicle.suspension.visualsConfig = nil;
 	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
-		vehicle.suspension.visualsConfig.objectName = vehicle.suspension.visualsConfig.objectName or self.PresetName.." Suspension";
+		vehicle.suspension.visualsConfig.objectName = vehicle.suspension.visualsConfig.objectName or vehicle.self.PresetName.." Suspension";
 		
 		vehicle.suspension.visualsConfig.objectRTE = vehicle.suspension.visualsConfig.objectRTE or vehicle.general.RTE;
 	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
@@ -307,7 +308,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		vehicle.wheel.spacing = Clamp(vehicle.wheel.spacing, 0, 1000000000);
 	end
 	
-	vehicle.wheel.objectName = vehicle.wheel.objectName or self.PresetName.." Wheel";
+	vehicle.wheel.objectName = vehicle.wheel.objectName or vehicle.self.PresetName.." Wheel";
 	
 	vehicle.wheel.objectRTE = vehicle.wheel.objectRTE or vehicle.general.RTE;
 	
@@ -349,7 +350,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 			vehicle.tensioner.spacing = Clamp(vehicle.tensioner.spacing, 0, 1000000000);
 		end
 		
-		vehicle.tensioner.objectName = vehicle.tensioner.objectName or self.PresetName.." Tensioner";
+		vehicle.tensioner.objectName = vehicle.tensioner.objectName or vehicle.self.PresetName.." Tensioner";
 		
 		vehicle.tensioner.objectRTE = vehicle.tensioner.objectRTE or vehicle.general.RTE;
 	end
@@ -371,7 +372,7 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(self, vehicle)
 		
 		vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.ALL;
 		
-		vehicle.track.objectName = vehicle.track.objectName or self.PresetName.." Track";
+		vehicle.track.objectName = vehicle.track.objectName or vehicle.self.PresetName.." Track";
 		
 		vehicle.track.objectRTE = vehicle.track.objectRTE or vehicle.general.RTE;
 		
@@ -587,13 +588,13 @@ function VehicleFramework.createSuspensionSprites(vehicle)
 		if not MovableMan:ValidMO(vehicle.suspension.objects[i]) then
 			vehicle.suspension.objects[i] = vehicle.suspension.creationFunction(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
 			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
-			vehicle.suspension.objects[i].Team = vehicle.general.team;
+			vehicle.suspension.objects[i].Team = vehicle.self.Team;
 			vehicle.suspension.objects[i].MissionCritical = true;
 		end
 	end
 end
 
-function VehicleFramework.createWheels(self, vehicle)
+function VehicleFramework.createWheels(vehicle)
 	local calculateAutoGeneratedSuspensionLength = function(wheelSize)
 		local length = {min = wheelSize * 0.5, normal = wheelSize, max = wheelSize * 1.5};
 		
@@ -632,8 +633,8 @@ function VehicleFramework.createWheels(self, vehicle)
 				vehicle.wheel.spacing = math.ceil(vehicle.wheel.size[i] * 1.15);
 			end
 			
-			vehicle.wheel.objects[i].Team = vehicle.general.team;
-			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(self.RotAngle, vehicle, i);
+			vehicle.wheel.objects[i].Team = vehicle.self.Team;
+			vehicle.wheel.objects[i].Pos = calculateWheelOffsetAndPosition(vehicle.self.RotAngle, vehicle, i);
 			vehicle.wheel.objects[i].Vel = Vector(0, 0);
 			vehicle.wheel.objects[i].IgnoresTeamHits = vehicle.general.forceWheelHorizontalLocking;
 			vehicle.wheel.objects[i].MissionCritical = true;
@@ -643,10 +644,10 @@ function VehicleFramework.createWheels(self, vehicle)
 	end
 end
 
-function VehicleFramework.createSprings(self, vehicle)
+function VehicleFramework.createSprings(vehicle)
 	--Handle AUTO_GENERATE for vehicle.suspension.chassisStiffnessModifier
 	if (vehicle.suspension.chassisStiffnessModifier == VehicleFramework.AUTO_GENERATE) then
-		vehicle.suspension.chassisStiffnessModifier = self.Mass/vehicle.wheel.count;
+		vehicle.suspension.chassisStiffnessModifier = vehicle.self.Mass/vehicle.wheel.count;
 	end
 	
 	for i, wheelObject in ipairs(vehicle.wheel.objects) do
@@ -669,13 +670,13 @@ function VehicleFramework.createSprings(self, vehicle)
 			confinesToCheck = {min = false, absolute = true, max = true},
 			showDebug = vehicle.general.showDebug
 		}
-		vehicle.suspension.springs[i] = SpringFramework.create(self, vehicle.wheel.objects[i], springConfig);
+		vehicle.suspension.springs[i] = SpringFramework.create(vehicle.self, vehicle.wheel.objects[i], springConfig);
 		
 		vehicle.previous.springDistanceFromRest[i] = Vector(vehicle.suspension.springs[i].unrotatedDistances[2].rest.X, vehicle.suspension.springs[i].unrotatedDistances[2].rest.Y);
 	end
 end
 
-function VehicleFramework.createTensioners(self, vehicle)
+function VehicleFramework.createTensioners(vehicle)
 	if (vehicle.tensioner ~= nil) then
 		local xOffset;
 		for i = 1, vehicle.tensioner.count do
@@ -695,17 +696,17 @@ function VehicleFramework.createTensioners(self, vehicle)
 				end
 				vehicle.tensioner.unrotatedOffsets[i] = Vector(xOffset, vehicle.tensioner.offsetLength[i]);
 				
-				vehicle.tensioner.objects[i].Team = vehicle.general.team;
+				vehicle.tensioner.objects[i].Team = vehicle.self.Team;
 				vehicle.tensioner.objects[i].Vel = Vector(0, 0);
 				vehicle.tensioner.objects[i].IgnoresTeamHits = true;
 				vehicle.tensioner.objects[i].MissionCritical = true;
 			end
 		end
-		VehicleFramework.updateTensioners(self, vehicle);
+		VehicleFramework.updateTensioners(vehicle);
 	end
 end
 
-function VehicleFramework.createTrack(self, vehicle)
+function VehicleFramework.createTrack(vehicle)
 	if (vehicle.track ~= nil) then
 		local trackSizer = vehicle.track.creationFunction(vehicle.track.objectName, vehicle.track.objectRTE);
 		vehicle.track.size = trackSizer.SpriteOffset * -2;
@@ -718,10 +719,10 @@ function VehicleFramework.createTrack(self, vehicle)
 		for i = 1, vehicle.track.count do
 			if not MovableMan:ValidMO(vehicle.track.objects[i]) then
 				vehicle.track.objects[i] = vehicle.track.creationFunction(vehicle.track.objectName, vehicle.track.objectRTE);
-				vehicle.track.objects[i].Team = vehicle.general.team;
+				vehicle.track.objects[i].Team = vehicle.self.Team;
 				vehicle.track.objects[i].Vel = Vector();
-				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-				vehicle.track.objects[i].RotAngle = self.RotAngle + vehicle.track.directions[i];
+				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(vehicle.self.RotAngle);
+				vehicle.track.objects[i].RotAngle = vehicle.self.RotAngle + vehicle.track.directions[i];
 				vehicle.track.objects[i].IgnoresTeamHits = true;
 				vehicle.track.objects[i].MissionCritical = true;
 			end
@@ -894,7 +895,7 @@ function VehicleFramework.deleteVehicle(vehicle)
 	end
 end
 
-function VehicleFramework.updateVehicle(self, vehicle)
+function VehicleFramework.updateVehicle(vehicle)
 	if (vehicle == nil) then
 		print("******************************************************************************************************");
 		print("Your vehicle has been incorrectly configured and cannot run. Please check the Vehicle Configuration Documentation.");
@@ -907,7 +908,7 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			VehicleFramework.updateLayers(vehicle);
 		end
 		
-		local destroyed = VehicleFramework.updateDestruction(self, vehicle);
+		local destroyed = VehicleFramework.updateDestruction(vehicle);
 		
 		if (not destroyed) then
 			VehicleFramework.updateAltitudeChecks(vehicle);
@@ -920,11 +921,11 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.updateTerrainBelowWheels(vehicle);
 			
-			VehicleFramework.updateTensioners(self, vehicle);
+			VehicleFramework.updateTensioners(vehicle);
 			
-			VehicleFramework.updateTrack(self, vehicle);
+			VehicleFramework.updateTrack(vehicle);
 			
-			VehicleFramework.updateChassis(self, vehicle);
+			VehicleFramework.updateChassis(vehicle);
 			
 			VehicleFramework.Audio.earlyUpdate(vehicle);
 			
@@ -932,7 +933,7 @@ function VehicleFramework.updateVehicle(self, vehicle)
 			
 			VehicleFramework.Audio.update(vehicle);
 			
-			VehicleFramework.updateVisuals(self, vehicle);
+			VehicleFramework.updateVisuals(vehicle);
 		end
 		
 		VehicleFramework.updatePreviousValues(vehicle);
@@ -997,14 +998,14 @@ function VehicleFramework.updateLayers(vehicle)
 	end
 end
 
-function VehicleFramework.updateDestruction(self, vehicle)
-	if (self.Health < 0) then
-		self:GibThis();
+function VehicleFramework.updateDestruction(vehicle)
+	if (vehicle.self.Health < 0) then
+		vehicle.self:GibThis();
 		return true;
 	end
 	
 	if (vehicle.destruction.overturnedTimer:IsPastSimMS(vehicle.destruction.overturnedInterval)) then
-		local rotAngleInDegrees = math.floor(self.RotAngle * 180 / math.pi)%360;
+		local rotAngleInDegrees = math.floor(vehicle.self.RotAngle * 180 / math.pi)%360;
 		if ((rotAngleInDegrees > 95 and rotAngleInDegrees < 265) or (rotAngleInDegrees < -95 and rotAngleInDegrees > -265)) then
 			vehicle.destruction.overturnedCounter = vehicle.destruction.overturnedCounter + 1;
 		end
@@ -1013,7 +1014,7 @@ function VehicleFramework.updateDestruction(self, vehicle)
 			if (vehicle.general.showDebug) then
 				print ("Vehicle was overturned and went boom cause it hit limit "..tostring(vehicle.destruction.overturnedLimit));
 			end
-			self:GibThis();
+			vehicle.self:GibThis();
 			return true;
 		else
 			vehicle.destruction.overturnedCounter = math.max(vehicle.destruction.overturnedCounter - 1, 0);
@@ -1141,18 +1142,19 @@ function VehicleFramework.updateTerrainBelowWheels(vehicle, forceUpdate)
 	end
 end
 
-function VehicleFramework.updateTensioners(self, vehicle)
+function VehicleFramework.updateTensioners(vehicle)
 	if (vehicle.tensioner ~= nil) then
 		for i, tensionerObject in ipairs(vehicle.tensioner.objects) do
 			--tensionerObject.AngularVel = vehicle.wheel.objects[1].AngularVel;
 			tensionerObject.RotAngle = vehicle.wheel.objects[1].RotAngle;
-			tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
-			tensionerObject.Vel = self.Vel;
+			tensionerObject.Pos = vehicle.general.pos + Vector(vehicle.tensioner.unrotatedOffsets[i].X, vehicle.tensioner.unrotatedOffsets[i].Y):RadRotate(vehicle.self.RotAngle);
+			tensionerObject.Vel = vehicle.self.Vel;
 		end
 	end
 end
 
-function VehicleFramework.updateTrack(self, vehicle)
+function VehicleFramework.updateTrack(vehicle)
+	local self = vehicle.self; --TODO get rid of this
 	if (vehicle.track ~= nil) then
 		--VehicleFramework.validateTrackIntegrity(vehicle);
 		
@@ -1165,12 +1167,12 @@ function VehicleFramework.updateTrack(self, vehicle)
 			distanceBetweenPrevAndNext = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX);
 			
 			if (i == vehicle.track.trackStarts[currentInflectionNumber]) then
-				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(vehicle.self.RotAngle);
 			elseif (i == vehicle.track.trackEnds[currentInflectionNumber]) then
 				currentInflectionNumber = currentInflectionNumber == #vehicle.track.inflection and 1 or currentInflectionNumber + 1;
 				currentInflection = vehicle.track.inflection[currentInflectionNumber];
 				
-				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(self.RotAngle);
+				trackObject.Pos = currentInflection.object.Pos + (vehicle.track.unrotatedOffsets[i] - currentInflection.point):RadRotate(vehicle.self.RotAngle);
 			else
 				if (vehicle.track.skippedEnds[i] == true and i == vehicle.track.trackEnds[currentInflectionNumber] - 1) then
 					trackObject.Pos = prevTrackObject.Pos + SceneMan:ShortestDistance(prevTrackObject.Pos, vehicle.general.pos + Vector(currentInflection.next.trackStart.X, currentInflection.next.trackStart.Y):RadRotate(self.RotAngle), SceneMan.SceneWrapsX) * 0.5;
@@ -1182,17 +1184,17 @@ function VehicleFramework.updateTrack(self, vehicle)
 			end
 			
 			
-			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - self.RotAngle - vehicle.track.directions[i];
-			--local angleOffset = ((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi) - self.RotAngle - vehicle.track.directions[i];
 			local clampedAngle = Clamp(angleOffset, -vehicle.track.maxRotationDeviation, vehicle.track.maxRotationDeviation);
+			local angleOffset = SceneMan:ShortestDistance(prevTrackObject.Pos, nextTrackObject.Pos, SceneMan.SceneWrapsX).AbsRadAngle - vehicle.self.RotAngle - vehicle.track.directions[i];
+			--local angleOffset = ((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi) - vehicle.self.RotAngle - vehicle.track.directions[i];
 			
 			--if (i == 8) then
 			--	print("i: "..tostring(i)..", angleBetweenPrevAndNext: "..tostring((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi)..", angleOffset: "..tostring(angleOffset)..", angleLimits: "..tostring(vehicle.track.maxRotationDeviation)..", clampedAngle: "..tostring(clampedAngle));
 			--end
 			
-			trackObject.RotAngle = self.RotAngle + vehicle.track.directions[i] + clampedAngle;
+			trackObject.RotAngle = vehicle.self.RotAngle + vehicle.track.directions[i] + clampedAngle;
 			
-			trackObject.Vel = self.Vel;
+			trackObject.Vel = vehicle.self.Vel;
 			trackObject:ClearForces();
 		end
 	end
@@ -1210,48 +1212,48 @@ function VehicleFramework.validateTrackIntegrity(vehicle)
 	end
 end
 
-function VehicleFramework.updateChassis(self, vehicle)
+function VehicleFramework.updateChassis(vehicle)
 	--Correct rotangle based either on the direction between wheels or, if one outer wheel is in the air but the other isn't, the direction that rotates the tank to be on the ground
 	local desiredRotAngle;
 	if (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[1] and not vehicle.wheel.isInAir[vehicle.wheel.count]) then
-		desiredRotAngle = self.RotAngle + 1;
+		desiredRotAngle = vehicle.self.RotAngle + 1;
 	elseif (vehicle.general.halfOrMoreInAir and vehicle.wheel.isInAir[vehicle.wheel.count] and not vehicle.wheel.isInAir[1]) then
-		desiredRotAngle = self.RotAngle - 1;
+		desiredRotAngle = vehicle.self.RotAngle - 1;
 	else
-		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[1]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[1]].normal):RadRotate(self.RotAngle), vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[2]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[2]].normal):RadRotate(self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
+		desiredRotAngle = SceneMan:ShortestDistance(vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[1]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[1]].normal):RadRotate(vehicle.self.RotAngle), vehicle.wheel.objects[vehicle.chassis.rotationAffectingWheels[2]].Pos - Vector(0, vehicle.suspension.length[vehicle.chassis.rotationAffectingWheels[2]].normal):RadRotate(vehicle.self.RotAngle), SceneMan.SceneWrapsX).AbsRadAngle;
 	end
 	local rotAngleCorrectionRateToUse = vehicle.general.isInAir and vehicle.chassis.rotAngleCorrectionRateInAir or vehicle.chassis.rotAngleCorrectionRate;
-	if (self.RotAngle < desiredRotAngle - rotAngleCorrectionRateToUse * 1.1) then
-		self.RotAngle = self.RotAngle + rotAngleCorrectionRateToUse;
-	elseif (self.RotAngle > desiredRotAngle + rotAngleCorrectionRateToUse * 1.1) then
-		self.RotAngle = self.RotAngle - rotAngleCorrectionRateToUse;
+	if (vehicle.self.RotAngle < desiredRotAngle - rotAngleCorrectionRateToUse * 1.1) then
+		vehicle.self.RotAngle = vehicle.self.RotAngle + rotAngleCorrectionRateToUse;
+	elseif (vehicle.self.RotAngle > desiredRotAngle + rotAngleCorrectionRateToUse * 1.1) then
+		vehicle.self.RotAngle = vehicle.self.RotAngle - rotAngleCorrectionRateToUse;
 	else
-		self.RotAngle = desiredRotAngle;
+		vehicle.self.RotAngle = desiredRotAngle;
 	end
 	
 	if (not vehicle.general.isInAir) then
-		self:MoveOutOfTerrain(6);
-		self.AngularVel = self.AngularVel * 0.5;
+		vehicle.self:MoveOutOfTerrain(6);
+		vehicle.self.AngularVel = vehicle.self.AngularVel * 0.5;
 		
 		if (vehicle.general.vel.Magnitude > vehicle.general.maxSpeed) then
-			self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
+			vehicle.self.Vel = Vector(vehicle.general.vel.X, vehicle.general.vel.Y):SetMagnitude(vehicle.general.maxSpeed);
 		else
 			if (not vehicle.general.isDriving) then
-				self.Vel = self.Vel * (1 - vehicle.general.deceleration * (vehicle.general.isStronglyDecelerating and 2 or 1));
+				vehicle.self.Vel = vehicle.self.Vel * (1 - vehicle.general.deceleration * (vehicle.general.isStronglyDecelerating and 2 or 1));
 		
 				if (vehicle.general.throttle == 0) then
-					if (self.Vel.Magnitude < vehicle.general.acceleration) then
-						self.Vel = Vector();
+					if (vehicle.self.Vel.Magnitude < vehicle.general.acceleration) then
+						vehicle.self.Vel = Vector();
 					end
 					
-					if (not vehicle.general.allowSlidingWhileStopped and self.Vel.Magnitude < 5 and math.abs(self.RotAngle) > (15 * math.pi/180)) then
-						self.Vel = Vector();
-						self.Pos = vehicle.previous.pos;
+					if (not vehicle.general.allowSlidingWhileStopped and vehicle.self.Vel.Magnitude < 5 and math.abs(vehicle.self.RotAngle) > (15 * math.pi/180)) then
+						vehicle.self.Vel = Vector();
+						vehicle.self.Pos = vehicle.previous.pos;
 					end
 				end
 			else
 				if (vehicle.general.movingOppositeToThrottle) then
-					self.Vel = self.Vel * (1 - vehicle.general.acceleration * 0.1);
+					vehicle.self.Vel = vehicle.self.Vel * (1 - vehicle.general.acceleration * 0.1);
 				end
 			end
 		end
@@ -1346,39 +1348,39 @@ function VehicleFramework.updateEvents(vehicle)
 	end
 end
 
-function VehicleFramework.updateVisuals(self, vehicle)
-	VehicleFramework.updateSuspensionVisuals(self, vehicle);
+function VehicleFramework.updateVisuals(vehicle)
+	VehicleFramework.updateSuspensionVisuals(vehicle);
 end
 
-function VehicleFramework.updateSuspensionVisuals(self, vehicle)
+function VehicleFramework.updateSuspensionVisuals(vehicle)
 	if (vehicle.suspension.visualsType ~= VehicleFramework.SuspensionVisualsType.NONE) then
 		for i, spring in ipairs(vehicle.suspension.springs) do
 			vehicle.suspension.offsets.main[i] = spring.targetPos[1];
 			if (i ~= vehicle.wheel.count) then
-				vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] + Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(self.RotAngle);
+				vehicle.suspension.offsets.midPoint[i] = vehicle.suspension.offsets.main[i] + Vector(vehicle.wheel.spacing * 0.5, 0):RadRotate(vehicle.self.RotAngle);
 			end
 		end
 
 		if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
 			for i, wheelObject in ipairs(vehicle.wheel.objects) do
-				VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+				VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.main[i], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), vehicle.self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 				if (i ~= 1) then
-					VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+					VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.midPoint[i - 1], Vector(wheelObject.Pos.X, wheelObject.Pos.Y), vehicle.self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 				end
 				if (i ~= vehicle.wheel.count) then
-					VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
+					VehicleFramework.Util.drawArrow(vehicle.suspension.offsets.midPoint[i], wheelObject.Pos, vehicle.self.RotAngle, vehicle.suspension.visualsConfig.widths[i], vehicle.suspension.visualsConfig.colourIndex);
 				end
 			end
 		elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
-			--VehicleFramework.updateSpriteSuspension(self, vehicle);
+			--VehicleFramework.updateSpriteSuspension(vehicle);
 		end
 	end
 end
 
---[[function VehicleFramework.updateDrawnSuspension(self, vehicle)
+--[[function VehicleFramework.updateDrawnSuspension(vehicle)
 end
 
-function VehicleFramework.updateSpriteSuspension(self, vehicle)
+function VehicleFramework.updateSpriteSuspension(vehicle)
 end--]]
 
 --[[

@@ -190,6 +190,8 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	-----------------------------
 	--OBJECT CREATION AND SETUP--
 	-----------------------------
+	VehicleFramework.setCreationFunctionsForObjects(vehicle);
+	
 	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
 		VehicleFramework.createSuspensionSprites(vehicle);
 	end
@@ -559,10 +561,34 @@ function VehicleFramework.ensureVehicleConfigIsValid(vehicle)
 	end
 end
 
+function VehicleFramework.setCreationFunctionsForObjects(vehicle)
+	vehicle.general.allObjectsAreActors = true;
+	
+	local objectGroupsToSetupCreationFunctionsFor = {suspension = vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE, wheel = true, tensioner = vehicle.tensioner ~= nil, track = vehicle.track ~= nil}
+	local presetModuleId, preset;
+	
+	for objectGroup, objectWillBeCreated in pairs(objectGroupsToSetupCreationFunctionsFor) do
+		if (objectWillBeCreated) then
+			presetModuleId = PresetMan:GetModuleIDFromPath(vehicle[objectGroup].objectRTE);
+			assert(presetModuleId > -1, "Your vehicle "..tostring(objectGroup).." objects used a nonexistant RTE, "..tostring(vehicle[objectGroup].objectRTE)..". Please see the Vehicle Configuration Documentation");
+			
+			for preset in PresetMan:GetDataModule(presetModuleId).Presets do
+				if (preset.PresetName == vehicle[objectGroup].objectName) then
+					vehicle[objectGroup].creationFunction = loadstring("return Create"..preset.ClassName.."(...)");
+					vehicle.general.allObjectsAreActors = vehicle.general.allObjectsAreActors and preset.ClassName == "Actor";
+					break;
+				end
+			end
+			
+			assert(vehicle[objectGroup].creationFunction ~= nil, "Unable to find a preset named "..tostring(vehicle[objectGroup].objectName).." in RTE "..tostring(vehicle[objectGroup].objectRTE).." so could not set up a creation function for "..tostring(objectGroup).." objects. Please see the Vehicle Configuration Documentation.");
+		end
+	end
+end
+
 function VehicleFramework.createSuspensionSprites(vehicle)
 	for i = 1, vehicle.suspension.count do
 		if not MovableMan:ValidMO(vehicle.suspension.objects[i]) then
-			vehicle.suspension.objects[i] = CreateMOSRotating(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
+			vehicle.suspension.objects[i] = vehicle.suspension.creationFunction(vehicle.suspension.objectName, vehicle.suspension.objectRTE);
 			vehicle.suspension.objects[i].Pos = vehicle.general.pos;
 			vehicle.suspension.objects[i].Team = vehicle.general.team;
 			vehicle.suspension.objects[i].MissionCritical = true;
@@ -596,7 +622,7 @@ function VehicleFramework.createWheels(self, vehicle)
 	vehicle.wheel.unrotatedOffsets = {};
 	for i = 1, vehicle.wheel.count do
 		if not MovableMan:ValidMO(vehicle.wheel.objects[i]) then
-			vehicle.wheel.objects[i] = CreateMOSRotating(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
+			vehicle.wheel.objects[i] = vehicle.wheel.creationFunction(vehicle.wheel.objectName, vehicle.wheel.objectRTE);
 			vehicle.wheel.size[i] = vehicle.wheel.objects[i].Diameter/math.sqrt(2);
 			
 			--Handle AUTO_GENERATE for vehicle.suspension.length
@@ -657,7 +683,7 @@ function VehicleFramework.createTensioners(self, vehicle)
 		local xOffset;
 		for i = 1, vehicle.tensioner.count do
 			if not MovableMan:ValidMO(vehicle.tensioner.objects[i]) then
-				vehicle.tensioner.objects[i] = CreateMOSRotating(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
+				vehicle.tensioner.objects[i] = vehicle.tensioner.creationFunction(vehicle.tensioner.objectName, vehicle.tensioner.objectRTE);
 				vehicle.tensioner.size[i] = vehicle.tensioner.objects[i].Diameter/math.sqrt(2);
 	
 				--Handle AUTO_GENERATE for vehicle.tensioner.spacing
@@ -683,8 +709,8 @@ function VehicleFramework.createTensioners(self, vehicle)
 end
 
 function VehicleFramework.createTrack(self, vehicle)
-	if (vehicle.track ~= nil and vehicle.tensioner ~= nil) then
-		local trackSizer = CreateMOSRotating(vehicle.track.objectName);
+	if (vehicle.track ~= nil) then
+		local trackSizer = vehicle.track.creationFunction(vehicle.track.objectName, vehicle.track.objectRTE);
 		vehicle.track.size = trackSizer.SpriteOffset * -2;
 		trackSizer.ToDelete = true;
 		trackSizer = nil;
@@ -694,7 +720,7 @@ function VehicleFramework.createTrack(self, vehicle)
 		
 		for i = 1, vehicle.track.count do
 			if not MovableMan:ValidMO(vehicle.track.objects[i]) then
-				vehicle.track.objects[i] = CreateMOSRotating(vehicle.track.objectName, vehicle.track.objectRTE);
+				vehicle.track.objects[i] = vehicle.track.creationFunction(vehicle.track.objectName, vehicle.track.objectRTE);
 				vehicle.track.objects[i].Team = vehicle.general.team;
 				vehicle.track.objects[i].Vel = Vector();
 				vehicle.track.objects[i].Pos = vehicle.general.pos + Vector(vehicle.track.unrotatedOffsets[i].X, vehicle.track.unrotatedOffsets[i].Y):RadRotate(self.RotAngle);
@@ -711,16 +737,18 @@ function VehicleFramework.setupTrackInflection(vehicle)
 		vehicle.track.inflection = {};
 		local inflectionConfig, iteratorIncrement;
 		
-		iteratorIncrement = vehicle.track.tensionerAnchorType == VehicleFramework.TrackAnchorType.FIRST_AND_LAST and (vehicle.tensioner.count - 1) or 1;
-		for i = 1, vehicle.tensioner.count, iteratorIncrement do
-			inflectionConfig = {
-				point = vehicle.tensioner.unrotatedOffsets[i],
-				objectTable = vehicle.tensioner,
-				objectIndex = i,
-				object = vehicle.tensioner.objects[i],
-				objectSize = vehicle.tensioner.size[i]
-			}
-			table.insert(vehicle.track.inflection, inflectionConfig);
+		if (vehicle.tensioner ~= nil) then
+			iteratorIncrement = vehicle.track.tensionerAnchorType == VehicleFramework.TrackAnchorType.FIRST_AND_LAST and (vehicle.tensioner.count - 1) or 1;
+			for i = 1, vehicle.tensioner.count, iteratorIncrement do
+				inflectionConfig = {
+					point = vehicle.tensioner.unrotatedOffsets[i],
+					objectTable = vehicle.tensioner,
+					objectIndex = i,
+					object = vehicle.tensioner.objects[i],
+					objectSize = vehicle.tensioner.size[i]
+				}
+				table.insert(vehicle.track.inflection, inflectionConfig);
+			end
 		end
 		
 		iteratorIncrement = vehicle.track.wheelAnchorType == VehicleFramework.TrackAnchorType.FIRST_AND_LAST and (vehicle.wheel.count - 1) or 1;

@@ -134,14 +134,14 @@ visualsConfig:
 			DRAWN - width - number, colourIndex - number between 0 and 255
 	3. Purpose - This allows you to provide necessary configuration details for the selected suspension visualsType, and can only be skipped for NONE or DRAWN visualsTypes. The purpose of these configuration values is described below:
 			SPRITE:
-				objectName - This determines what MOSRotating your suspension sprite will be using its PresetName. If no value is set it will use a default name (vehicleSuspension).
+				objectName - This determines what MOSRotating your suspension sprite will be using its PresetName. If no value is set it will search through the RTE to find an object whose PresetName contains the word suspension and, optionally, any part of the Vehicle's PresetName.
 				objectRTE - This determines what RTE to use for your wheel objects
 			DRAWN:
 				width - This determines how many pixels wide the DRAWN suspension should be
 				colourIndex - This detrmines which colour from the game's palette the DRAWN suspension should use
 	4. Default - The default values for this change based on the visualsType being used. They are as follows:
 				NONE: This will be set to nil since it's not used.
-				SPRITE: objectName will default to the vehicle's PresetName with the string " Suspension" concatenated to the end and the objectRTE will default to the vehicle's RTE.
+				SPRITE:objectRTE will default to the vehicle's RTE and objectName will default to the PresetName of the most appropriate object the framework can find.
 				DRAWN: the width will default to 1/3rd of the size of the Vehicle's wheels and the colourIndex will default to 247 (a dark grey).
 
 --------------------
@@ -161,8 +161,8 @@ spacing:
 objectName:
 	1. Optional - Yes
 	2. Supported Types - string
-	3. Purpose - This determines what MOSRotating your wheel will be using its PresetName. If no value is set it will use a default name (vehicleWheel).
-	4. Default - The vehicle's PresetName with the string " Wheel" concatenated to the end.
+	3. Purpose - This determines what MOSRotating your wheel will be using its PresetName. If no value is set it will search through the RTE to find an object whose PresetName contains the word wheel, doesn't contain the word tensioner and, optionally, any part of the Vehicle's PresetName.
+	4. Default - The PresetName of the most appropriate object the framework can find
 
 objectRTE:
 	1. Optional - Yes
@@ -196,8 +196,8 @@ spacing:
 objectName:
 	1. Optional - Yes
 	2. Supported Types - string
-	3. Purpose - This determines what MOSRotating your tensioner will be using its PresetName. If no value is set it will use a default name (vehicleTensioner)
-	4. Default - The vehicle's PresetName with the string " Tensioner" concatenated to the end.
+	3. Purpose - This determines what MOSRotating your tensioner will be using its PresetName. If no value is set it will search through the RTE to find an object whose PresetName contains the word tensioner and, optionally, any part of the Vehicle's PresetName.
+	4. Default - The PresetName of the most appropriate object the framework can find
 
 objectRTE:
 	1. Optional - Yes
@@ -241,8 +241,8 @@ wheelAnchorType:
 objectName:
 	1. Optional - Yes
 	2. Supported Types - string
-	3. Purpose - This determines what MOSRotating your track will be using its PresetName. If no value is set it will use a default name (vehicleTrack)
-	4. Default - The vehicle's PresetName with the string " Track" concatenated to the end.
+	3. Purpose - This determines what MOSRotating your track will be using its PresetName. If no value is set it will search through the RTE to find an object whose PresetName contains the word track or tread and, optionally, any part of the Vehicle's PresetName.
+	4. Default - The PresetName of the most appropriate object the framework can find
 
 objectRTE:
 	1. Optional - Yes

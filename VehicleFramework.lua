@@ -287,9 +287,18 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(vehicle)
 	if (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.NONE) then
 		vehicle.suspension.visualsConfig = nil;
 	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.SPRITE) then
+		vehicle.suspension.visualsConfig.objectRTE = vehicle.suspension.visualsConfig.objectRTE or vehicle.general.RTE;
+		
+		if (vehicle.suspension.visualsConfig.objectName == nil) then
+			local objectPreset = VehicleFramework.Util.searchForAppropriatePreset(vehicle.suspension.visualsConfig.objectRTE, {include = "suspension", optionalInclude = vehicle.self.PresetName})
+			assert(objectPreset ~= nil, "Unable to find any presets in "..tostring(vehicle.suspension.visualsConfig.objectRTE).." that matched the Sprite based suspension naming criteria. Your suspension's PresetNames should include the word 'suspension' and, optionally, the preset name of the vehicle to narrow it down. Please check the Vehicle Configuration Documentation.");
+			vehicle.suspension.visualsConfig.objectName = objectPreset.PresetName;
+			if (vehicle.general.showDebug) then
+				print("Setting vehicle.suspension.visualsConfig.objectName to "..tostring(vehicle.suspension.visualsConfig.objectName));
+			end
+		end
 		vehicle.suspension.visualsConfig.objectName = vehicle.suspension.visualsConfig.objectName or vehicle.self.PresetName.." Suspension";
 		
-		vehicle.suspension.visualsConfig.objectRTE = vehicle.suspension.visualsConfig.objectRTE or vehicle.general.RTE;
 	elseif (vehicle.suspension.visualsType == VehicleFramework.SuspensionVisualsType.DRAWN) then
 		vehicle.suspension.visualsConfig.width = vehicle.suspension.visualsConfig.width or VehicleFramework.AUTO_GENERATE;
 		if (type(vehicle.suspension.visualsConfig.width) == number) then
@@ -308,9 +317,16 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(vehicle)
 		vehicle.wheel.spacing = Clamp(vehicle.wheel.spacing, 0, 1000000000);
 	end
 	
-	vehicle.wheel.objectName = vehicle.wheel.objectName or vehicle.self.PresetName.." Wheel";
-	
 	vehicle.wheel.objectRTE = vehicle.wheel.objectRTE or vehicle.general.RTE;
+	
+	if (vehicle.wheel.objectName == nil) then
+		local objectPreset = VehicleFramework.Util.searchForAppropriatePreset(vehicle.wheel.objectRTE, {include = "wheel", optionalInclude = vehicle.self.PresetName, exclude = "tensioner"})
+		assert(objectPreset ~= nil, "Unable to find any presets in "..tostring(vehicle.wheel.objectRTE).." that matched the wheel naming criteria. Your wheel's PresetNames should include the word 'wheel' and, optionally, the preset name of the vehicle to narrow it down. Please check the Vehicle Configuration Documentation.");
+		vehicle.wheel.objectName = objectPreset.PresetName;
+		if (vehicle.general.showDebug) then
+			print("Setting vehicle.wheel.objectName to "..tostring(vehicle.wheel.objectName));
+		end
+	end
 	
 	--Tensioner
 	if (vehicle.tensioner ~= nil) then
@@ -350,9 +366,16 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(vehicle)
 			vehicle.tensioner.spacing = Clamp(vehicle.tensioner.spacing, 0, 1000000000);
 		end
 		
-		vehicle.tensioner.objectName = vehicle.tensioner.objectName or vehicle.self.PresetName.." Tensioner";
-		
 		vehicle.tensioner.objectRTE = vehicle.tensioner.objectRTE or vehicle.general.RTE;
+		
+		if (vehicle.tensioner.objectName == nil) then
+			local objectPreset = VehicleFramework.Util.searchForAppropriatePreset(vehicle.tensioner.objectRTE, {include = "tensioner", optionalInclude = {vehicle.self.PresetName, "wheel"}})
+			assert(objectPreset ~= nil, "Unable to find any presets in "..tostring(vehicle.tensioner.objectRTE).." that matched the tensioner naming criteria. Your tensioner's PresetNames should include the word 'tensioner' and, optionally, the preset name of the vehicle to narrow it down. Please check the Vehicle Configuration Documentation.");
+			vehicle.tensioner.objectName = objectPreset.PresetName;
+			if (vehicle.general.showDebug) then
+				print("Setting vehicle.tensioner.objectName to "..tostring(vehicle.tensioner.objectName));
+			end
+		end
 	end
 	
 	--Track
@@ -372,9 +395,16 @@ function VehicleFramework.setCustomisationDefaultsAndLimits(vehicle)
 		
 		vehicle.track.wheelAnchorType = vehicle.track.wheelAnchorType or VehicleFramework.TrackAnchorType.ALL;
 		
-		vehicle.track.objectName = vehicle.track.objectName or vehicle.self.PresetName.." Track";
-		
 		vehicle.track.objectRTE = vehicle.track.objectRTE or vehicle.general.RTE;
+		
+		if (vehicle.track.objectName == nil) then
+			local objectPreset = VehicleFramework.Util.searchForAppropriatePreset(vehicle.track.objectRTE, {include = {"track", "tread"}, optionalInclude = vehicle.self.PresetName})
+			assert(objectPreset ~= nil, "Unable to find any presets in "..tostring(vehicle.track.objectRTE).." that matched the track naming criteria. Your track's PresetNames should include the word 'track' or 'tread' and, optionally, the preset name of the vehicle to narrow it down. Please check the Vehicle Configuration Documentation.");
+			vehicle.track.objectName = objectPreset.PresetName;
+			if (vehicle.general.showDebug) then
+				print("Setting vehicle.track.objectName to "..tostring(vehicle.track.objectName));
+			end
+		end
 		
 		vehicle.track.inflectionStartOffsetDirection = vehicle.track.inflectionStartOffsetDirection or Vector(0, -1);
 	end
@@ -578,7 +608,7 @@ function VehicleFramework.setCreationFunctionsForObjects(vehicle)
 				end
 			end
 			
-			assert(vehicle[objectGroup].creationFunction ~= nil, "Unable to find a preset named "..tostring(vehicle[objectGroup].objectName).." in RTE "..tostring(vehicle[objectGroup].objectRTE).." so could not set up a creation function for "..tostring(objectGroup).." objects. Please see the Vehicle Configuration Documentation.");
+			assert(vehicle[objectGroup].creationFunction ~= nil, "Unable to find a preset named "..tostring(vehicle[objectGroup].objectName).." in RTE "..tostring(vehicle[objectGroup].objectRTE).." so could not set up a creation function for "..tostring(objectGroup).." objects. Please check the Vehicle Configuration Documentation.");
 		end
 	end
 end
@@ -1781,7 +1811,7 @@ function VehicleFramework.Audio.checkIfAudioConfigStateAndStageAreCorrect(audioC
 		local soundExistsAndIsPlaying = false;
 		
 		if (audioConfig.stateType == VehicleFramework.Audio.StateType.INCREMENTED_STAGE_IS_PLAYING_SOUND) then
-			assert(audioConfig.topLevelTable.isStageTable, "Tried check stateType INCREMENTED_STAGE_IS_PLAYING_SOUND on an audio configuration that is not set up to support stages, which suggests an error in your overall audio configuration setup. Please see the Vehicle Configuration Documentation.");
+			assert(audioConfig.topLevelTable.isStageTable, "Tried check stateType INCREMENTED_STAGE_IS_PLAYING_SOUND on an audio configuration that is not set up to support stages, which suggests an error in your overall audio configuration setup. Please check the Vehicle Configuration Documentation.");
 			soundObjectsTable = audioConfig.topLevelTable.stages[VehicleFramework.Util.loopedIncrementalClamp(audioConfig.topLevelTable.currentStage + audioConfig.mainActionOptions.numberOfStagesToIncrementBy, 1, #audioConfig.topLevelTable.stages)].soundObjects;
 		end
 		
@@ -1869,7 +1899,7 @@ function VehicleFramework.Audio.doStopSoundActionFromEvent(audioConfig, vehicle,
 	local audioConfigToStopSoundsFor;
 	
 	if (audioConfig.mainActionType == VehicleFramework.Audio.ActionType.STOP_INCREMENTED_STAGE_SOUND) then
-		assert(audioConfig.topLevelTable.isStageTable, "Tried to trigger a STOP_INCREMENTED_STAGE_SOUND action from an audio configuration that is not set up to support stages, which suggests an error in your overall audio configuration setup. Please see the Vehicle Configuration Documentation.");
+		assert(audioConfig.topLevelTable.isStageTable, "Tried to trigger a STOP_INCREMENTED_STAGE_SOUND action from an audio configuration that is not set up to support stages, which suggests an error in your overall audio configuration setup. Please check the Vehicle Configuration Documentation.");
 		
 		audioConfigToStopSoundsFor = audioConfig.topLevelTable.stages[VehicleFramework.Util.loopedIncrementalClamp(audioConfig.topLevelTable.currentStage + audioConfig.mainActionOptions.numberOfStagesToIncrementBy, 1, #audioConfig.topLevelTable.stages)];
 		
@@ -1899,7 +1929,7 @@ function VehicleFramework.Audio.doStopSoundActionFromEvent(audioConfig, vehicle,
 end
 
 function VehicleFramework.Audio.doAdvanceStageActionFromEvent(audioConfig, vehicle, ...)
-	assert(audioConfig.topLevelTable.isStageTable, "Tried to trigger an audio advance stage action from an audio configuration with trigger type "..tostring(audioConfig.triggerType).." that is not set up to support stages, which suggests an error in your audio configuration. Please see the Vehicle Configuration Documentation.");
+	assert(audioConfig.topLevelTable.isStageTable, "Tried to trigger an audio advance stage action from an audio configuration with trigger type "..tostring(audioConfig.triggerType).." that is not set up to support stages, which suggests an error in your audio configuration. Please check the Vehicle Configuration Documentation.");
 	
 	for optionIndex, optionTable in ipairs(audioConfig.mainActionOptions) do
 		if (VehicleFramework.Audio.checkIfConditionsAreSatisfied(audioConfig, vehicle, optionTable.conditions, ...)) then
@@ -1960,6 +1990,89 @@ end
 ---------------------
 VehicleFramework.Util = {};
 function VehicleFramework.Util:______________________() end; --This is just a spacer for the notepad++ function list
+
+function VehicleFramework.Util.searchForAppropriatePreset(presetModule, keywordTable)
+	assert(type(presetModule) ~= "nil", "Tried to search a nil module for an appropriate preset. Please enter a valid module or module path");
+	local presetModuleName = "with no displayable name";
+	if (type(presetModule) == "string") then
+		assert(PresetMan:GetModuleIDFromPath(presetModule) > -1, "Tried to search in the nonexistant module "..tostring(rteNameOrModule));
+		presetModuleName = presetModule;
+		presetModule = PresetMan:GetDataModule(PresetMan:GetModuleIDFromPath(presetModule));
+	end
+	
+	if (type(keywordTable) ~= "table" and keywordTable ~= nil) then
+		local value = keywordTable;
+		keywordTable = {include = {value}};
+	end
+	assert(type(keywordTable) ~= "nil", "Tried to search module "..tostring(presetModuleName).." for an appropriate preset without specifying a keyword table.");
+	
+	keywordTable.include = keywordTable.include or keywordTable[1] or {};
+	keywordTable.optionalInclude = keywordTable.optionalInclude or keywordTable[2] or {};
+	keywordTable.exclude = keywordTable.exclude or keywordTable[3] or {};
+	for keywordCategoryKey, keywordCategoryEntry in pairs(keywordTable) do
+		if (type(keywordCategoryEntry) ~= "table") then
+			keywordTable[keywordCategoryKey] = keywordCategoryEntry == nil and {} or {keywordCategoryEntry};
+		end
+	end
+	assert(#keywordTable.include > 0, "Tried to search module "..tostring(presetModuleName).." for an appropriate preset without specifying any keywords to include");
+	
+	for _, excludeKeyword in ipairs(keywordTable.exclude) do
+		for _, includeKeyword in ipairs(keywordTable.include) do
+			assert(excludeKeyword:lower() ~= includeKeyword:lower(), "Tried to search module "..tostring(presetModuleName).." but had the same included and excluded keyword "..excludeKeyword);
+		end
+		for _, optionalIncludeKeyword in ipairs(keywordTable.optionalInclude) do
+			assert(excludeKeyword:lower() ~= optionalIncludeKeyword:lower(), "Tried to search module "..tostring(presetModuleName).." but had the same optionally included and excluded keyword "..excludeKeyword);
+		end
+	end
+	
+	local splitStrings;
+	for _, keywordCategoryTable in pairs(keywordTable) do
+		for keywordKey, keyword in pairs(keywordCategoryTable) do
+			splitStrings = keyword:split(" ");
+			if (#splitStrings > 1) then
+				table.remove(keywordCategoryTable, keywordKey);
+				for _, splitString in ipairs(splitStrings) do
+					table.insert(keywordCategoryTable, splitString);
+				end
+			end
+		end
+	end
+	
+	local containsAnyExcludedKeywords, requiredKeywordCount, optionalKeywordCount, chosenPreset, chosenPresetRequiredKeywordCount, chosenPresetOptionalKeywordCount;
+	for preset in presetModule.Presets do
+		containsAnyExcludedKeywords, requiredKeywordCount, optionalKeywordCount, chosenPresetRequiredKeywordCount, chosenPresetOptionalKeywordCount = false, 0, 0, 0, -1;
+		
+		for _, excludeKeyword in ipairs(keywordTable.exclude) do
+			if (preset.PresetName:lower():find(excludeKeyword:lower())) then
+				containsAnyExcludedKeywords = true;
+			end
+		end
+		
+		if (not containsAnyExcludedKeywords) then
+			for _, includeKeyword in ipairs(keywordTable.include) do
+				if (preset.PresetName:lower():find(includeKeyword:lower())) then
+					requiredKeywordCount = requiredKeywordCount + 1;
+				end
+			end
+			
+			if (requiredKeywordCount > 0) then
+				for _, optionalKeyword in ipairs(keywordTable.optionalInclude) do
+					if (preset.PresetName:lower():find(optionalKeyword:lower())) then
+						optionalKeywordCount = optionalKeywordCount + 1;
+					end
+				end
+			end
+		end
+		
+		if (containsAnyExcludedKeywords == false and requiredKeywordCount > chosenPresetRequiredKeywordCount and optionalKeywordCount > chosenPresetOptionalKeywordCount) then
+			chosenPreset = preset;
+			chosenPresetRequiredKeywordCount = requiredKeywordCount;
+			chosenPresetOptionalKeywordCount = optionalKeywordCount;
+		end
+	end
+	
+	return chosenPreset;
+end
 
 function VehicleFramework.Util.findValidFileEndingAndCountForFilePath(filePath, possibleFileEndings, fileEnding, fileCount)
 	if (fileEnding ~= nil and fileCount ~= nil) then

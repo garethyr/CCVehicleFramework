@@ -2,6 +2,7 @@ require("BaseClassModifications");
 require("SpringFramework/SpringFramework");
 
 VehicleFramework = {};
+VehicleFramework.vehicles = {};
 
 -------------
 --Constants--
@@ -213,6 +214,8 @@ function VehicleFramework.createVehicle(self, vehicleConfig)
 	VehicleFramework.createTrack(vehicle);
 	
 	VehicleFramework.Audio.createSoundTablesAndTimersAndEvents(vehicle);
+	
+	VehicleFramework.vehicles[self.UniqueID] = vehicle;
 	
 	return vehicle;
 end

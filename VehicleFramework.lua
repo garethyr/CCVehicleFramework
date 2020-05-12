@@ -1225,6 +1225,7 @@ function VehicleFramework.updateTrack(vehicle)
 			--	print("i: "..tostring(i)..", angleBetweenPrevAndNext: "..tostring((distanceBetweenPrevAndNext.AbsRadAngle + math.pi * 2)%math.pi)..", angleOffset: "..tostring(angleOffset)..", angleLimits: "..tostring(vehicle.track.maxRotationDeviation)..", clampedAngle: "..tostring(clampedAngle));
 			--end
 			
+			--PrimitiveMan:DrawTextPrimitive(trackObject.Pos - Vector(0, 20):RadRotate(trackObject.RotAngle), string.format("%s", math.floor(math.deg(vehicle.track.directions[i])), math.floor(math.deg(angleOffset)), math.floor(math.deg(clampedAngle))), true, 1);
 			trackObject.RotAngle = vehicle.self.RotAngle + vehicle.track.directions[i] + clampedAngle;
 			
 			trackObject.Vel = vehicle.self.Vel;
@@ -1614,9 +1615,11 @@ function VehicleFramework.Audio.setupAndValidateAndPopulateAudioConfig(vehicle, 
 
 	audioConfig.soundConfig = audioConfig.soundConfig or {};
 	
-	audioConfig.soundConfig.looped = audioConfig.soundConfig.looped or false;
+	audioConfig.soundConfig.looped = audioConfig.soundConfig.looped == true and -1 or 0;
 	
-	audioConfig.soundConfig.affectedByPitch = audioConfig.soundConfig.affectedByPitch == nil and true or audioConfig.soundConfig.affectedByPitch;
+	audioConfig.soundConfig.affectedByPitch = audioConfig.soundConfig.affectedByPitch == false and 1 or -1;
+	
+	audioConfig.soundConfig.minimumAttenuationStartDistance = audioConfig.soundConfig.minimumAttenuationStartDistance or -1;
 	
 	audioConfig.soundConfig.overwrittenOnRepeat = audioConfig.soundConfig.overwrittenOnRepeat or false;
 	
@@ -1769,9 +1772,9 @@ function VehicleFramework.Audio.update(vehicle)
 			local forceStopSounds = audioConfig.topLevelTable.isStageTable and audioConfig.topLevelAudioConfig.indexInParent ~= audioConfig.topLevelTable.currentStage and (audioConfig.topLevelTable.stopSoundsFromOtherStages or audioConfig.topLevelTable.stages[audioConfig.topLevelTable.currentStage].forceStopSoundsFromOtherStages);
 			for soundOptionIndex, soundOptionTable in ipairs(audioConfig.soundObjects) do
 				for playerNumber, sound in pairs(soundOptionTable) do
-					if (sound:IsPlaying()) then
-						sound:UpdateDistance(SceneMan:TargetDistanceScalar(vehicle.self.Pos, vehicle.general.playerScreens[playerNumber]));
-					elseif (forceStopSounds or not sound:IsPlaying()) then
+					if (sound:IsBeingPlayed()) then
+						sound:SetPosition(vehicle.self.Pos);
+					elseif (forceStopSounds or not sound:IsBeingPlayed()) then
 						if (audioConfig.soundAlreadyPlayed and not audioConfig.topLevelTable.isStageTable) then
 							audioConfig.soundAlreadyPlayed = false;
 						end
@@ -1820,7 +1823,7 @@ function VehicleFramework.Audio.checkIfAudioConfigStateAndStageAreCorrect(audioC
 		
 		for optionIndex, optionTable in ipairs(audioConfig.mainActionOptions) do
 			soundToCheck = soundObjectsTable[optionIndex] ~= nil and soundObjectsTable[optionIndex][vehicle.general.humanPlayers[1]] or nil;
-			soundExistsAndIsPlaying = type(soundToCheck) == "userdata" and soundToCheck:IsPlaying();
+			soundExistsAndIsPlaying = type(soundToCheck) == "userdata" and soundToCheck:IsBeingPlayed();
 			
 			if (soundExistsAndIsPlaying) then
 				break;
@@ -1859,7 +1862,7 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 		end
 		
 		soundToCheck = soundObjectsTableToCheck[optionIndex] ~= nil and soundObjectsTableToCheck[optionIndex][vehicle.general.humanPlayers[1]] or nil;
-		if (type(soundToCheck) == "userdata" and soundToCheck:IsPlaying()) then
+		if (type(soundToCheck) == "userdata" and soundToCheck:IsBeingPlayed()) then
 			table.insert(soundExistsAndIsPlaying, optionIndex);
 		end
 	end
@@ -1883,8 +1886,8 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 				end
 				
 				audioConfig.soundObjects[optionIndex][playerNumber] = AudioMan:PlaySound(filePath,
-					SceneMan:TargetDistanceScalar(vehicle.self.Pos, vehicle.general.playerScreens[playerNumber]), --TODO possibly this should be replaced by some sort of calculation to allow overwriting
-					audioConfig.soundConfig.looped, audioConfig.soundConfig.affectedByPitch, playerNumber);
+					vehicle.self.Pos, playerNumber, --TODO possibly this should be replaced by some sort of calculation to allow overwriting
+					audioConfig.soundConfig.looped, -1, -1, audioConfig.soundConfig.minimumAttenuationStartDistance, false);
 			end
 			
 			if (audioConfig.soundConfig.looped == false) then
@@ -2238,10 +2241,10 @@ function VehicleFramework.Util.drawArrow(startPos, endPos, rotAngle, width, colo
 	for i = 1, width + (evenLineCount and 1 or 0) do
 		if (i == midCount) then
 			if (evenLineCount == false) then
-				FrameMan:DrawLinePrimitive(startPos, endPos, colourIndex);
+				PrimitiveMan:DrawLinePrimitive(startPos, endPos, colourIndex);
 			end
 		else
-			FrameMan:DrawLinePrimitive(Vector(rotatedStartPos.X - (isVertical and (midCount - i) or 0), rotatedStartPos.Y - (isHorizontal and (midCount - i) or 0)):RadRotate(rotAngle), endPos, colourIndex);
+			PrimitiveMan:DrawLinePrimitive(Vector(rotatedStartPos.X - (isVertical and (midCount - i) or 0), rotatedStartPos.Y - (isHorizontal and (midCount - i) or 0)):RadRotate(rotAngle), endPos, colourIndex);
 		end
 	end
 end

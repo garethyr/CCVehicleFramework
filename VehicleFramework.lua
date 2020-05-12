@@ -1619,7 +1619,7 @@ function VehicleFramework.Audio.setupAndValidateAndPopulateAudioConfig(vehicle, 
 	
 	audioConfig.soundConfig.affectedByPitch = audioConfig.soundConfig.affectedByPitch == false and 1 or -1;
 	
-	audioConfig.soundConfig.minimumAttenuationStartDistance = audioConfig.soundConfig.minimumAttenuationStartDistance or -1;
+	audioConfig.soundConfig.attenuationStartDistance = audioConfig.soundConfig.attenuationStartDistance or -1;
 	
 	audioConfig.soundConfig.overwrittenOnRepeat = audioConfig.soundConfig.overwrittenOnRepeat or false;
 	
@@ -1887,7 +1887,7 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 				
 				audioConfig.soundObjects[optionIndex][playerNumber] = AudioMan:PlaySound(filePath,
 					vehicle.self.Pos, playerNumber, --TODO possibly this should be replaced by some sort of calculation to allow overwriting
-					audioConfig.soundConfig.looped, -1, -1, audioConfig.soundConfig.minimumAttenuationStartDistance, false);
+					audioConfig.soundConfig.looped, -1, -1, audioConfig.soundConfig.attenuationStartDistance, false);
 			end
 			
 			if (audioConfig.soundConfig.looped == false) then

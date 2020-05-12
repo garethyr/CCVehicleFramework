@@ -1,0 +1,65 @@
+-----------------------------------------------
+-- All Available Sound Configuration Options --
+-- To Be Replaced With Documentation Entries --
+-----------------------------------------------
+
+vehicleConfig.audio[1] = {
+	stages = {
+		stopSoundsFromOtherStages = true, --Defaults to true, whether or not to stop playing any sounds that aren't from the current stage
+		{
+			stateType = VehicleFramework.Audio.StateType.ANY, --Defaults to any, really only used for additional actions
+			triggerType = VehicleFramework.Audio.TriggerType.IS_DRIVING,
+			soundConfig = { --Sound config and objects
+				looped = false, --Defaults to false
+				attenuationStartDistance = number --Defaults to -1 which leaves it to default
+				overwrittenOnRepeat = false --Defaults to false, whether or not the sound should be overwritten if the event is triggered again (i.e. replay impact sound if falling twice)
+			},
+			advanceStageOnComplete = true, --Defaults to true for non-looping sounds and false for looping sounds (for safety). If this is set to true it'll actually generate an additional action for not playing that advances the stage
+			includeActionDelayTimer = false --Defaults to false, use if you're only doing function conditions but want an actionDelayTimer
+			forceStopSoundsFromOtherStages = false, --Defaults to false, use to overwrite the stageConfig's setting for when you want to stop other sounds no regardless of it
+			mainActionType = VehicleFramework.Audio.ActionType.PLAY_SOUND, --Defaults to PLAY_SOUND for main tables. Ones that aren't PLAY_SOUND don't need mainActionOptions and can just have conditions
+			mainActionOptions = { --Each possible action option (in this case sounds to play), order matters
+				performAllOptionsWithSatisfiedConditions = false, --Defaults to false, whether to just do the first action with a satisfied condition or keep going through them
+				numberOfStagesToIncrementBy = 1, --Defaults to 1, how many stages to increment by if this action does something with stages, such as advancing them or stopping sounds from previous stages
+				{
+					stopAdditionalActionsFromBeingPerformed = true, --Defaults to true, whether this action will stop other actions from happening if all aren't supposed to be performed
+					fileRTE = nil, --leave empty to default to vehicle.general.RTE
+					filePathModifier = "Sounds/SomeSound",
+					fileEnding = ".wav", --This should be automatically determined by using file open to try til we get the right one. Options: mp3, ogg, wav
+					fileCount = 10, --This should be optional and safety checked by using file open to make sure all numbers exist
+					fileTraversalOrder = VehicleFramework.TraversalOrderType.STATELESS_RANDOM, --Defaults to stateless random so it picks a random sound
+					conditions = {
+						allConditionsRequired = true, --Defaults to true so every condition needs to be satisfied
+						{ --Operator and checks table, order matters cause things are done in that order
+							{
+								operatorType = VehicleFramework.OperatorType.GREATER_THAN, --can also use ">", no default in manual config, but will default to this with auto configs
+								value = 70, --no default in manual config, but will default to some calculated version of this with auto configs
+								argumentNumber = nil --defaults to its index in the trigger table but can be changed if you want to do a certain condition before, very advanced stuff to handle manually
+							},
+							{
+								operatorType = VehicleFramework.OperatorType.LESS_THAN, --can also use ">", no default in manual config, but will default to this with auto configs
+								value = 150, --no default in manual config, but will default to some calculated version of this with auto configs
+								argumentNumber = nil --defaults to its index in the trigger table but can be changed if you want to do a certain condition before, very advanced stuff to handle manually
+							}
+						}
+					},
+					{
+						--Other similarly set up options go here
+					}
+				},
+			},
+			additionalActions = {
+				{
+					stateType = VehicleFramework.Audio.StateType.IS_PLAYING_SOUND,
+					triggerType = VehicleFramework.Audio.TriggerType.NOT_DRIVING,
+					mainActionType = VehicleFramework.Audio.ActionType.STOP_SOUND_AND_ADVANCE_STAGE,
+					conditions = {
+						{
+							triggerDelay = 5000
+						}
+					}
+				}
+			}
+		}
+	}
+};

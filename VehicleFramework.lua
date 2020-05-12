@@ -1715,7 +1715,7 @@ function VehicleFramework.Audio.setupAndValidateAndPopulateAudioConfig(vehicle, 
 	
 	
 	if (audioConfig.advanceStageOnComplete == nil and audioConfig.topLevelTable.isStageTable and VehicleFramework.Audio.PlaySoundActionTypes[audioConfig.mainActionType]) then
-		audioConfig.advanceStageOnComplete = audioConfig.soundConfig.looped == false and true or false; --cases where this don't get set will remain nil, which gets treated as false later
+		audioConfig.advanceStageOnComplete = audioConfig.soundConfig.looped == 0 and true or false; --cases where this don't get set will remain nil, which gets treated as false later
 	end
 	if (audioConfig.advanceStageOnComplete and audioConfig.mainActionType == VehicleFramework.Audio.ActionType.PLAY_SOUND) then
 		audioConfig.advanceStageOnComplete = nil;
@@ -1850,7 +1850,7 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 	local soundToCheck, filePath;
 	
 	--Do not repeat sounds for non-looped sounds. This is needed because events execute sequentially so the sound will keep replying before stage advancement
-	if (audioConfig.soundConfig.looped == false and audioConfig.soundAlreadyPlayed == true) then
+	if (audioConfig.soundConfig.looped == 0 and audioConfig.soundAlreadyPlayed == true) then
 		return;
 	end
 	
@@ -1882,7 +1882,7 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 			
 			for _, playerNumber in ipairs(vehicle.general.humanPlayers) do
 				if (vehicle.general.showDebug) then
-					print("Playing"..(#soundExistsAndIsPlaying > 0 and audioConfig.soundConfig.overwrittenOnRepeat and " overwriting " or " ").."sound at "..tostring(filePath).." in soundOptionTable "..tostring(audioConfig.soundObjects[optionIndex]));
+					print("Playing"..(#soundExistsAndIsPlaying > 0 and audioConfig.soundConfig.overwrittenOnRepeat and " overwriting " or " ").."sound at "..tostring(filePath).." in satisfied soundOptionTable "..tostring(optionIndex));
 				end
 				
 				audioConfig.soundObjects[optionIndex][playerNumber] = AudioMan:PlaySound(filePath,
@@ -1890,7 +1890,7 @@ function VehicleFramework.Audio.doPlaySoundActionFromEvent(audioConfig, vehicle,
 					audioConfig.soundConfig.looped, -1, -1, audioConfig.soundConfig.attenuationStartDistance, false);
 			end
 			
-			if (audioConfig.soundConfig.looped == false) then
+			if (audioConfig.soundConfig.looped == 0) then
 				audioConfig.soundAlreadyPlayed = true;
 			end
 			
